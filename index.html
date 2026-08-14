@@ -1,0 +1,884 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Ежемесячные отчёты портфеля</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F5F4EF; --surface:#FFFFFF; --border:#E2E0D2; --border-soft:#EBE9DD;
+  --ink:#1B2A22; --ink2:#57624F; --ink3:#8B9284;
+  --accent:#A9762C; --accent-ink:#FFFFFF; --accent-soft:#F3E7D2;
+  --positive:#2F7D4F; --positive-soft:#E4F1E8;
+  --negative:#B23B2E; --negative-soft:#FBE8E5;
+  --pending:#B8874A; --pending-soft:#F6E9D6;
+  --radius:10px;
+}
+*{box-sizing:border-box;}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:'Inter',system-ui,sans-serif;font-size:15px;line-height:1.5;}
+h1,h2,h3{font-family:'Source Serif 4',Georgia,serif;font-weight:600;margin:0;}
+.num{font-variant-numeric:tabular-nums;}
+button{font-family:inherit;cursor:pointer;}
+input,select,textarea{font-family:inherit;font-size:15px;}
+.hidden{display:none !important;}
+
+/* layout shells */
+.screen{min-height:100vh;display:flex;flex-direction:column;}
+.center-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;}
+.container{max-width:720px;margin:0 auto;width:100%;padding:0 16px;}
+.topbar{background:var(--ink);color:#fff;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:10;}
+.topbar .brand{font-family:'Source Serif 4',serif;font-size:17px;font-weight:600;}
+.topbar .sub{font-size:12px;color:#B9C2B0;margin-top:1px;}
+.topbar button{background:transparent;border:0.5px solid rgba(255,255,255,0.35);color:#fff;padding:7px 12px;border-radius:var(--radius);font-size:13px;}
+.topbar button:hover{background:rgba(255,255,255,0.1);}
+
+/* login card */
+.login-card{background:var(--surface);border:0.5px solid var(--border);border-radius:14px;padding:32px 28px;max-width:380px;width:100%;}
+.login-card h1{font-size:22px;margin-bottom:6px;}
+.login-card p.lead{color:var(--ink2);font-size:14px;margin:0 0 24px;}
+.field{margin-bottom:16px;}
+.field label{display:block;font-size:13px;color:var(--ink2);margin-bottom:6px;}
+.field input,.field select,.field textarea{width:100%;padding:10px 12px;border:0.5px solid var(--border);border-radius:var(--radius);background:#fff;color:var(--ink);}
+.field input:focus,.field select:focus,.field textarea:focus{outline:2px solid var(--accent);outline-offset:0;}
+.field textarea{resize:vertical;min-height:70px;}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:11px 18px;border-radius:var(--radius);border:0.5px solid var(--border);background:#fff;color:var(--ink);font-size:14px;font-weight:500;width:100%;}
+.btn:hover{background:var(--border-soft);}
+.btn-primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);}
+.btn-primary:hover{background:#95661F;}
+.btn-ghost{border:none;background:transparent;color:var(--ink2);text-decoration:underline;padding:6px;width:auto;}
+.role-pick{display:flex;flex-direction:column;gap:12px;margin-top:8px;}
+.role-btn{background:#fff;border:0.5px solid var(--border);border-radius:12px;padding:18px;text-align:left;}
+.role-btn:hover{border-color:var(--accent);}
+.role-btn .t{font-family:'Source Serif 4',serif;font-size:16px;font-weight:600;margin-bottom:3px;}
+.role-btn .d{font-size:13px;color:var(--ink2);}
+.error-msg{background:var(--negative-soft);color:var(--negative);font-size:13px;padding:9px 12px;border-radius:var(--radius);margin-bottom:14px;}
+.hint-note{background:var(--accent-soft);color:#6B4A17;font-size:12.5px;padding:9px 12px;border-radius:var(--radius);margin-bottom:12px;}
+.link-hint{background:var(--bg);color:var(--ink2);font-size:12px;padding:8px 10px;border-radius:8px;margin:0 0 12px;}
+.pass-input-wrap{display:flex;align-items:stretch;gap:6px;}
+.pass-input-wrap input{flex:1;min-width:0;width:auto;}
+.eye-btn{background:#fff;border:0.5px solid var(--border);border-radius:var(--radius);padding:0 12px;font-size:16px;color:var(--ink2);flex-shrink:0;}
+.eye-btn:hover{background:var(--border-soft);}
+
+/* content area */
+.content{flex:1;padding:20px 0 100px;}
+.section-title{font-size:13px;text-transform:uppercase;letter-spacing:0.04em;color:var(--ink3);margin:22px 0 10px;}
+.card{background:var(--surface);border:0.5px solid var(--border);border-radius:12px;padding:16px;margin-bottom:12px;}
+
+/* accordion (company form) */
+.acc{border:0.5px solid var(--border);border-radius:12px;margin-bottom:10px;overflow:hidden;background:#fff;}
+.acc-head{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;cursor:pointer;}
+.acc-head h3{font-size:15px;}
+.acc-head .chev{color:var(--ink3);transition:transform 0.15s;font-size:13px;}
+.acc.open .chev{transform:rotate(90deg);}
+.acc-body{max-height:0;overflow:hidden;transition:max-height 0.2s ease;}
+.acc.open .acc-body{max-height:2000px;}
+.acc-body-inner{padding:4px 16px 16px;}
+.field-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:0.5px solid var(--border-soft);}
+.field-row:last-child{border-bottom:none;}
+.field-row label{font-size:13.5px;color:var(--ink2);flex:1;}
+.field-row .in-wrap{display:flex;align-items:center;gap:6px;}
+.field-row input{width:130px;text-align:right;padding:7px 9px;border:0.5px solid var(--border);border-radius:8px;}
+.field-row .unit{font-size:12px;color:var(--ink3);width:34px;}
+
+/* ledger rows for admin display */
+.ledger-row{display:flex;align-items:baseline;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:0.5px solid var(--border-soft);}
+.ledger-row:last-child{border-bottom:none;}
+.ledger-row .lbl{font-size:13.5px;color:var(--ink2);flex:1;min-width:0;}
+.ledger-row .vals{display:flex;align-items:baseline;gap:10px;flex-shrink:0;}
+.ledger-row .val{font-size:14.5px;font-weight:500;}
+.delta{font-size:12px;padding:2px 7px;border-radius:20px;font-weight:500;}
+.delta.up{background:var(--positive-soft);color:var(--positive);}
+.delta.down{background:var(--negative-soft);color:var(--negative);}
+.delta.flat{background:var(--border-soft);color:var(--ink3);}
+.delta.muted{background:var(--border-soft);color:var(--ink3);}
+
+/* bottom save bar */
+.savebar{position:fixed;bottom:0;left:0;right:0;background:var(--surface);border-top:0.5px solid var(--border);padding:12px 16px;z-index:20;}
+.savebar .container{max-width:720px;}
+
+/* status badges */
+.badge{display:inline-flex;align-items:center;gap:5px;font-size:12px;padding:3px 9px;border-radius:20px;font-weight:500;}
+.badge.done{background:var(--positive-soft);color:var(--positive);}
+.badge.pending{background:var(--pending-soft);color:var(--pending);}
+
+/* company card in admin overview */
+.co-card{background:#fff;border:0.5px solid var(--border);border-radius:12px;margin-bottom:10px;overflow:hidden;}
+.co-head{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;cursor:pointer;}
+.co-head .name{font-family:'Source Serif 4',serif;font-size:16px;font-weight:600;}
+.co-detail{padding:0 16px 16px;border-top:0.5px solid var(--border-soft);}
+.compare-row{display:flex;gap:8px;margin:14px 0 6px;}
+.compare-row select{flex:1;padding:8px;border:0.5px solid var(--border);border-radius:8px;font-size:13px;}
+.group-label{font-size:12px;text-transform:uppercase;letter-spacing:0.03em;color:var(--ink3);margin:14px 0 4px;}
+.textblock{background:var(--bg);border-radius:8px;padding:10px 12px;font-size:13.5px;color:var(--ink);margin-top:6px;white-space:pre-wrap;}
+.textblock .k{font-size:11px;color:var(--ink3);text-transform:uppercase;letter-spacing:0.03em;display:block;margin-bottom:3px;}
+.textblock a{color:var(--accent);}
+
+/* tabs */
+.tabbar{display:flex;gap:4px;background:#fff;border:0.5px solid var(--border);border-radius:12px;padding:4px;margin-bottom:16px;}
+.tabbar button{flex:1;background:transparent;border:none;padding:9px;border-radius:9px;font-size:13.5px;color:var(--ink2);font-weight:500;}
+.tabbar button.active{background:var(--ink);color:#fff;}
+
+/* summary metric grid */
+.metric-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px;}
+.metric-card{background:#fff;border:0.5px solid var(--border);border-radius:12px;padding:14px;}
+.metric-card .l{font-size:12px;color:var(--ink2);margin-bottom:4px;}
+.metric-card .v{font-family:'Source Serif 4',serif;font-size:22px;font-weight:600;}
+
+/* company mgmt */
+.co-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between;padding:11px 0;border-bottom:0.5px solid var(--border-soft);}
+.co-row:last-child{border-bottom:none;}
+.co-row .info .n{font-size:14px;font-weight:500;}
+.co-row .info .p{font-size:12px;color:var(--ink3);}
+.icon-btn{background:transparent;border:0.5px solid var(--border);border-radius:8px;padding:6px 10px;font-size:12px;color:var(--ink2);}
+.icon-btn:hover{background:var(--border-soft);}
+.icon-btn.danger{color:var(--negative);border-color:var(--negative-soft);}
+.co-row-actions{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;}
+.pass-toggle{background:transparent;border:none;padding:0;color:var(--ink2);font-size:12px;font-family:inherit;text-decoration:underline;text-decoration-style:dotted;letter-spacing:0.5px;}
+.pass-toggle:hover{color:var(--ink);}
+.pass-edit-row{margin-top:4px;}
+.pass-input{padding:5px 8px;border:0.5px solid var(--accent);border-radius:6px;font-size:12.5px;width:150px;}
+
+/* toast */
+#toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--ink);color:#fff;padding:10px 18px;border-radius:30px;font-size:13.5px;opacity:0;transition:all 0.2s;pointer-events:none;z-index:50;}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+.select-months{margin-bottom:14px;}
+.months-list{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;}
+.months-list button{background:#fff;border:0.5px solid var(--border);border-radius:20px;padding:6px 12px;font-size:12.5px;color:var(--ink2);}
+.months-list button.active{background:var(--ink);color:#fff;border-color:var(--ink);}
+.months-list button .dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--positive);margin-right:5px;}
+
+.chart-wrap{background:#fff;border:0.5px solid var(--border);border-radius:12px;padding:14px;margin-top:10px;}
+.small-select{padding:7px 9px;border:0.5px solid var(--border);border-radius:8px;font-size:13px;width:100%;margin-bottom:10px;}
+.empty-note{color:var(--ink3);font-size:13px;padding:20px 0;text-align:center;}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="toast"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.0/chart.umd.min.js"></script>
+<script>
+const FIELD_GROUPS = [
+  {id:'fin', title:'Финансы', fields:[
+    {id:'revenue_actual', label:'Выручка (факт)', type:'money'},
+    {id:'revenue_plan', label:'Выручка (план)', type:'money'},
+    {id:'gross_profit', label:'Валовая прибыль', type:'money'},
+    {id:'gross_margin', label:'Валовая маржа', type:'percent'},
+    {id:'ebitda', label:'EBITDA', type:'money'},
+    {id:'net_profit', label:'Чистая прибыль', type:'money'},
+    {id:'cogs', label:'Себестоимость (общая сумма за месяц)', type:'money'},
+    {id:'opex', label:'Операционные расходы', type:'money'},
+    {id:'cash_balance', label:'Остаток на счетах', type:'money'},
+    {id:'receivables', label:'Дебиторская задолженность', type:'money'},
+    {id:'payables', label:'Кредиторская задолженность', type:'money'},
+    {id:'burn_rate', label:'Сколько тратите сверх заработанного за месяц (если тратите больше, чем зарабатываете)', type:'money'},
+    {id:'runway', label:'На сколько месяцев хватит денег при таком расходе', type:'months'},
+  ]},
+  {id:'sales', title:'Продажи', fields:[
+    {id:'orders_count', label:'Количество заказов/продаж/броней', type:'count', unit:'шт'},
+    {id:'gmv', label:'Оборот на маркетплейсах (GMV)', type:'money'},
+    {id:'avg_check', label:'Средний чек', type:'money'},
+    {id:'ltv', label:'LTV', type:'money'},
+  ]},
+  {id:'clients', title:'Клиенты', fields:[
+    {id:'active_clients', label:'Активные клиенты', type:'count', unit:'шт'},
+    {id:'new_clients', label:'Новые клиенты', type:'count', unit:'шт'},
+    {id:'repeat_clients', label:'Повторные покупки/визиты', type:'count', unit:'шт'},
+    {id:'churned_clients', label:'Ушедшие клиенты', type:'count', unit:'шт'},
+    {id:'cac', label:'CAC', type:'money'},
+    {id:'retention_rate', label:'Процент удержания клиентов', type:'percent'},
+  ]},
+  {id:'marketing', title:'Маркетинг', fields:[
+    {id:'ad_budget', label:'Рекламный бюджет', type:'money'},
+    {id:'roas', label:'ROAS (сколько принесла реклама на 1 ₽ бюджета)', type:'ratio'},
+    {id:'cpl', label:'CPL (стоимость одной заявки или лида)', type:'money'},
+    {id:'traffic', label:'Трафик / посетители за месяц', type:'count', unit:'чел'},
+    {id:'conversion', label:'Конверсия в покупку', type:'percent'},
+  ]},
+  {id:'team', title:'Команда', fields:[
+    {id:'headcount', label:'Сотрудников', type:'count', unit:'чел'},
+    {id:'hires', label:'Наняли', type:'count', unit:'чел'},
+    {id:'departures', label:'Уволились/уволили', type:'count', unit:'чел'},
+    {id:'payroll', label:'ФОТ', type:'money'},
+  ]},
+];
+const TEXT_FIELDS = [
+  {id:'events', label:'Главные события месяца'},
+  {id:'risks', label:'Риски / проблемы'},
+  {id:'plans', label:'Планы на следующий месяц'},
+];
+const MONTHS_RU = ['январь','февраль','март','апрель','май','июнь','июль','август','сентябрь','октябрь','ноябрь','декабрь'];
+
+function monthLabel(m){
+  const [y,mo] = m.split('-').map(Number);
+  const name = MONTHS_RU[mo-1];
+  return name.charAt(0).toUpperCase()+name.slice(1)+' '+y;
+}
+function currentMonthStr(){
+  const d = new Date();
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+}
+function prevMonthStr(m){
+  let [y,mo] = m.split('-').map(Number);
+  mo -= 1; if(mo===0){mo=12;y-=1;}
+  return y+'-'+String(mo).padStart(2,'0');
+}
+function genRecentMonths(count){
+  let m = currentMonthStr(); const out=[m];
+  for(let i=1;i<count;i++){ m = prevMonthStr(m); out.push(m); }
+  return out;
+}
+function fmtNum(v, digits){
+  if(v===null||v===undefined) return null;
+  return Number(v).toLocaleString('ru-RU',{maximumFractionDigits:digits!==undefined?digits:0});
+}
+function fmtValue(field, v){
+  if(v===null||v===undefined||v==='') return '—';
+  const n = Number(v);
+  if(isNaN(n)) return '—';
+  switch(field.type){
+    case 'money': return fmtNum(n,0)+' ₽';
+    case 'percent': return fmtNum(n,1)+'%';
+    case 'ratio': return fmtNum(n,2)+'x';
+    case 'months': return fmtNum(n,1)+' мес';
+    case 'count': return fmtNum(n,0)+(field.unit?' '+field.unit:'');
+    default: return String(v);
+  }
+}
+function deltaHtml(curr, prev){
+  if(curr===null||curr===undefined||curr===''||prev===null||prev===undefined||prev===''){
+    return '<span class="delta muted">нет данных</span>';
+  }
+  const c = Number(curr), p = Number(prev);
+  if(isNaN(c)||isNaN(p)) return '<span class="delta muted">—</span>';
+  if(p===0){
+    if(c===0) return '<span class="delta flat">0%</span>';
+    return '<span class="delta muted">—</span>';
+  }
+  const pct = ((c-p)/Math.abs(p))*100;
+  const cls = pct>0.05?'up':pct<-0.05?'down':'flat';
+  const arrow = pct>0.05?'▲':pct<-0.05?'▼':'•';
+  const label = (pct>=0?'+':'')+fmtNum(pct,1)+'%';
+  return `<span class="delta ${cls}">${arrow} ${label}</span>`;
+}
+
+/* ---------- storage helpers (Supabase) ---------- */
+const SUPABASE_URL = 'https://grswypvzmuwziswwomqf.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_j-nKGsT_pPP6U5fd8_-RFw_XEuW1nFA';
+
+async function sb(path, options={}){
+  const res = await fetch(SUPABASE_URL + '/rest/v1/' + path, {
+    ...options,
+    headers: {
+      'apikey': SUPABASE_KEY,
+      'Authorization': 'Bearer ' + SUPABASE_KEY,
+      'Content-Type': 'application/json',
+      ...(options.headers||{})
+    }
+  });
+  if(!res.ok){ throw new Error('Supabase ' + res.status + ': ' + await res.text()); }
+  const text = await res.text();
+  return text ? JSON.parse(text) : null;
+}
+
+async function loadConfig(){
+  const [companies, adminRows] = await Promise.all([
+    sb('companies?select=*'),
+    sb('admin_config?select=password&id=eq.1')
+  ]);
+  const adminPassword = (adminRows && adminRows[0]) ? adminRows[0].password : 'salfetka2026';
+  return { companies: companies || [], adminPassword };
+}
+async function addCompanyRemote(company){
+  await sb('companies', { method:'POST', body: JSON.stringify(company) });
+}
+async function removeCompanyRemote(id){
+  await sb(`companies?id=eq.${encodeURIComponent(id)}`, { method:'DELETE' });
+}
+async function updateCompanyPasswordRemote(id, password){
+  await sb(`companies?id=eq.${encodeURIComponent(id)}`, { method:'PATCH', body: JSON.stringify({password}) });
+}
+async function updateAdminPasswordRemote(password){
+  await sb(`admin_config?id=eq.1`, { method:'PATCH', body: JSON.stringify({password}) });
+}
+async function loadReport(companyId, month){
+  const rows = await sb(`reports?select=data&company_id=eq.${encodeURIComponent(companyId)}&month=eq.${encodeURIComponent(month)}`);
+  return (rows && rows[0]) ? rows[0].data : null;
+}
+async function saveReportData(companyId, month, data){
+  await sb(`reports?on_conflict=company_id,month`, {
+    method:'POST',
+    headers: { 'Prefer': 'resolution=merge-duplicates' },
+    body: JSON.stringify({ company_id: companyId, month: month, data: data, updated_at: new Date().toISOString() })
+  });
+}
+async function listCompanyMonths(companyId){
+  const rows = await sb(`reports?select=month&company_id=eq.${encodeURIComponent(companyId)}&order=month.desc`);
+  return (rows||[]).map(r=>r.month);
+}
+
+/* ---------- state ---------- */
+const S = {
+  config:null, view:'landing', role:null, companyId:null, loginError:'',
+  companyMonth:null, companyReport:null, companyMonthsDone:[],
+  adminTab:'overview', adminMonth:null, expandedCoId:null,
+  compareA:null, compareB:null, chartMetric:null, coDetailCache:{},
+  revealedPasswords:{}, editingCoId:null, confirmingDeleteId:null,
+};
+
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2200);
+}
+
+const app = document.getElementById('app');
+app.addEventListener('click', onAppClick);
+app.addEventListener('submit', e=>e.preventDefault());
+
+async function onAppClick(e){
+  const t = e.target.closest('[data-act]');
+  if(!t) return;
+  const act = t.dataset.act;
+
+  if(act==='goto-company-login'){ S.view='company-login'; S.loginError=''; render(); }
+  if(act==='goto-admin-login'){ S.view='admin-login'; S.loginError=''; render(); }
+  if(act==='back-landing'){ S.view='landing'; render(); }
+
+  if(act==='company-login-submit'){
+    const sel = document.getElementById('co-select').value;
+    const pass = document.getElementById('co-password').value;
+    const co = S.config.companies.find(c=>c.id===sel);
+    if(!co){ S.loginError='Выберите компанию.'; render(); return; }
+    if(co.password !== pass){ S.loginError='Неверный пароль.'; render(); return; }
+    S.role='company'; S.companyId=co.id; S.companyMonth=currentMonthStr();
+    await enterCompanyMonth(S.companyMonth);
+    S.companyMonthsDone = await listCompanyMonths(co.id);
+    S.view='company-app'; render();
+  }
+
+  if(act==='admin-login-submit'){
+    const pass = document.getElementById('admin-password').value;
+    if(pass !== S.config.adminPassword){ S.loginError='Неверный пароль.'; render(); return; }
+    S.role='admin'; S.adminMonth=currentMonthStr(); S.view='admin-app'; render();
+  }
+
+  if(act==='logout'){ Object.assign(S,{view:'landing',role:null,companyId:null,loginError:'',expandedCoId:null}); render(); }
+
+  if(act==='toggle-acc'){
+    t.closest('.acc').classList.toggle('open');
+  }
+
+  if(act==='toggle-login-pass'){
+    const inp = document.getElementById(t.dataset.target);
+    if(inp){
+      const show = inp.type === 'password';
+      inp.type = show ? 'text' : 'password';
+      t.textContent = show ? '🙈' : '👁';
+    }
+  }
+
+  if(act==='pick-month'){
+    const m = t.dataset.month;
+    await enterCompanyMonth(m);
+    render();
+  }
+
+  if(act==='save-report'){
+    const data = {};
+    document.querySelectorAll('#reportForm [data-field]').forEach(inp=>{
+      const v = inp.value.trim();
+      data[inp.dataset.field] = v==='' ? null : (inp.tagName==='TEXTAREA' ? v : Number(v));
+    });
+    data.updatedAt = Date.now();
+    await saveReportData(S.companyId, S.companyMonth, data);
+    S.companyReport = data;
+    S.companyMonthsDone = await listCompanyMonths(S.companyId);
+    toast('Отчёт сохранён');
+    render();
+  }
+
+  if(act==='admin-tab'){ S.adminTab = t.dataset.tab; render(); }
+
+  if(act==='toggle-co'){
+    const id = t.dataset.id;
+    if(S.expandedCoId === id){ S.expandedCoId = null; }
+    else{
+      S.expandedCoId = id;
+      S.compareA = S.adminMonth; S.compareB = prevMonthStr(S.adminMonth);
+      await loadCoDetail(id, S.compareA); await loadCoDetail(id, S.compareB);
+    }
+    render();
+  }
+
+  if(act==='add-company'){
+    const name = document.getElementById('new-co-name').value.trim();
+    const pass = document.getElementById('new-co-pass').value.trim();
+    if(!name || !pass){ toast('Укажите название и пароль'); return; }
+    const id = 'c_'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+    const company = {id,name,password:pass};
+    await addCompanyRemote(company);
+    S.config.companies.push(company);
+    toast('Компания добавлена'); render();
+  }
+
+  if(act==='remove-company'){
+    S.confirmingDeleteId = t.dataset.id; render();
+  }
+  if(act==='cancel-remove-company'){
+    S.confirmingDeleteId = null; render();
+  }
+  if(act==='confirm-remove-company'){
+    const id = t.dataset.id;
+    await removeCompanyRemote(id);
+    S.config.companies = S.config.companies.filter(c=>c.id!==id);
+    S.confirmingDeleteId = null;
+    toast('Компания удалена'); render();
+  }
+
+  if(act==='toggle-pass'){
+    const id = t.dataset.id;
+    S.revealedPasswords[id] = !S.revealedPasswords[id];
+    render();
+  }
+
+  if(act==='edit-co-pass'){
+    S.editingCoId = t.dataset.id; render();
+  }
+  if(act==='cancel-co-pass'){
+    S.editingCoId = null; render();
+  }
+  if(act==='save-co-pass'){
+    const id = t.dataset.id;
+    const np = document.getElementById('editpass_'+id).value.trim();
+    if(!np){ toast('Пароль не может быть пустым'); return; }
+    await updateCompanyPasswordRemote(id, np);
+    const co = S.config.companies.find(c=>c.id===id);
+    co.password = np;
+    S.editingCoId = null;
+    toast('Пароль обновлён'); render();
+  }
+
+  if(act==='save-admin-pass'){
+    const np = document.getElementById('new-admin-pass').value.trim();
+    if(!np){ toast('Введите новый пароль'); return; }
+    await updateAdminPasswordRemote(np);
+    S.config.adminPassword = np;
+    toast('Пароль администратора обновлён');
+    document.getElementById('new-admin-pass').value='';
+  }
+
+  if(act==='export-backup'){
+    toast('Собираю резервную копию…');
+    const backup = {exportedAt: new Date().toISOString(), config: S.config, reports: {}};
+    for(const co of S.config.companies){
+      const months = await listCompanyMonths(co.id);
+      backup.reports[co.id] = {name: co.name};
+      for(const m of months){
+        backup.reports[co.id][m] = await loadReport(co.id, m);
+      }
+    }
+    const dataStr = 'data:application/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(backup, null, 2));
+    const a = document.createElement('a');
+    a.setAttribute('href', dataStr);
+    a.setAttribute('download', 'portfolio-backup-'+currentMonthStr()+'.json');
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    toast('Резервная копия скачана');
+  }
+}
+
+app.addEventListener('change', async (e)=>{
+  if(e.target.id === 'admin-month-select'){
+    S.adminMonth = e.target.value; S.expandedCoId=null; render();
+  }
+  if(e.target.classList.contains('compare-select')){
+    const which = e.target.dataset.which;
+    if(which==='a') S.compareA = e.target.value; else S.compareB = e.target.value;
+    await loadCoDetail(S.expandedCoId, S.compareA);
+    await loadCoDetail(S.expandedCoId, S.compareB);
+    render();
+  }
+  if(e.target.id === 'chart-metric-select'){
+    S.chartMetric = e.target.value;
+    await renderChart();
+  }
+});
+
+async function enterCompanyMonth(m){
+  S.companyMonth = m;
+  S.companyReport = await loadReport(S.companyId, m) || {};
+}
+async function loadCoDetail(companyId, month){
+  const key = companyId+':'+month;
+  if(!(key in S.coDetailCache)){
+    S.coDetailCache[key] = await loadReport(companyId, month);
+  }
+  return S.coDetailCache[key];
+}
+
+/* ---------- render ---------- */
+function render(){
+  if(S.view==='landing') return renderLanding();
+  if(S.view==='company-login') return renderCompanyLogin();
+  if(S.view==='admin-login') return renderAdminLogin();
+  if(S.view==='company-app') return renderCompanyApp();
+  if(S.view==='admin-app') return renderAdminApp();
+}
+
+function renderLanding(){
+  app.innerHTML = `
+  <div class="center-screen">
+    <div class="login-card">
+      <h1>Ежемесячные отчёты</h1>
+      <p class="lead">Портфельные компании — сдайте отчёт. Михаил — посмотрите сводку.</p>
+      <div class="role-pick">
+        <button class="role-btn" data-act="goto-company-login">
+          <div class="t">Я — портфельная компания</div>
+          <div class="d">Заполнить отчёт за месяц</div>
+        </button>
+        <button class="role-btn" data-act="goto-admin-login">
+          <div class="t">Я — Михаил / администратор</div>
+          <div class="d">Посмотреть сводку по всем компаниям</div>
+        </button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function renderCompanyLogin(){
+  const opts = S.config.companies.slice().sort((a,b)=>a.name.localeCompare(b.name,'ru'))
+    .map(c=>`<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('');
+  app.innerHTML = `
+  <div class="center-screen">
+    <div class="login-card">
+      <h1>Вход для компании</h1>
+      <p class="lead">Выберите вашу компанию и введите пароль.</p>
+      ${S.loginError?`<div class="error-msg">${S.loginError}</div>`:''}
+      ${S.config.companies.length===0?`<div class="error-msg">Компании ещё не добавлены администратором.</div>`:''}
+      <div class="field">
+        <label>Компания</label>
+        <select id="co-select">
+          <option value="" disabled selected>Выберите компанию…</option>
+          ${opts}
+        </select>
+      </div>
+      <div class="field">
+        <label>Пароль</label>
+        <div class="pass-input-wrap">
+          <input type="password" id="co-password" />
+          <button type="button" class="eye-btn" data-act="toggle-login-pass" data-target="co-password">👁</button>
+        </div>
+      </div>
+      <button class="btn btn-primary" data-act="company-login-submit">Войти</button>
+      <div style="text-align:center;margin-top:10px;">
+        <button class="btn-ghost" data-act="back-landing">Назад</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function renderAdminLogin(){
+  app.innerHTML = `
+  <div class="center-screen">
+    <div class="login-card">
+      <h1>Вход для администратора</h1>
+      <p class="lead">Введите пароль администратора.</p>
+      ${S.loginError?`<div class="error-msg">${S.loginError}</div>`:''}
+      <div class="field">
+        <label>Пароль</label>
+        <div class="pass-input-wrap">
+          <input type="password" id="admin-password" />
+          <button type="button" class="eye-btn" data-act="toggle-login-pass" data-target="admin-password">👁</button>
+        </div>
+      </div>
+      <button class="btn btn-primary" data-act="admin-login-submit">Войти</button>
+      <div style="text-align:center;margin-top:10px;">
+        <button class="btn-ghost" data-act="back-landing">Назад</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function renderCompanyApp(){
+  const co = S.config.companies.find(c=>c.id===S.companyId);
+  const months = genRecentMonths(12);
+  const rep = S.companyReport || {};
+  const monthsChips = months.map(m=>{
+    const done = S.companyMonthsDone.includes(m);
+    return `<button data-act="pick-month" data-month="${m}" class="${m===S.companyMonth?'active':''}">${done && m!==S.companyMonth?'<span class="dot"></span>':''}${monthLabel(m)}</button>`;
+  }).join('');
+
+  const groupsHtml = FIELD_GROUPS.map((g,gi)=>`
+    <div class="acc ${gi===0?'open':''}">
+      <div class="acc-head" data-act="toggle-acc"><h3>${g.title}</h3><span class="chev">▸</span></div>
+      <div class="acc-body"><div class="acc-body-inner">
+        ${g.fields.map(f=>`
+          <div class="field-row">
+            <label for="f_${f.id}">${f.label}</label>
+            <div class="in-wrap">
+              <input type="number" step="any" inputmode="decimal" id="f_${f.id}" data-field="${f.id}" value="${rep[f.id]!==undefined && rep[f.id]!==null?rep[f.id]:''}" />
+              <span class="unit">${f.type==='money'?'₽':f.type==='percent'?'%':f.type==='ratio'?'x':f.type==='months'?'мес':(f.unit||'')}</span>
+            </div>
+          </div>`).join('')}
+      </div></div>
+    </div>`).join('');
+
+  const textHtml = `
+    <div class="acc">
+      <div class="acc-head" data-act="toggle-acc"><h3>Комментарии</h3><span class="chev">▸</span></div>
+      <div class="acc-body"><div class="acc-body-inner">
+        <p class="link-hint">Есть фото, видео или файл — вставьте на них ссылку (Google Диск, Telegram и т.п.) прямо в текст, она станет кликабельной.</p>
+        ${TEXT_FIELDS.map(f=>`
+          <div class="field" style="margin-top:10px;">
+            <label>${f.label}</label>
+            <textarea data-field="${f.id}" id="f_${f.id}">${rep[f.id]?escapeHtml(rep[f.id]):''}</textarea>
+          </div>`).join('')}
+      </div></div>
+    </div>`;
+
+  app.innerHTML = `
+  <div class="screen">
+    <div class="topbar">
+      <div><div class="brand">${escapeHtml(co.name)}</div><div class="sub">Ежемесячный отчёт</div></div>
+      <button data-act="logout">Выйти</button>
+    </div>
+    <div class="content"><div class="container">
+      <div class="section-title">Месяц отчёта</div>
+      <div class="months-list">${monthsChips}</div>
+
+      <div class="section-title" style="margin-top:22px;">${monthLabel(S.companyMonth)}</div>
+      <div class="hint-note">Не все поля подходят под любой бизнес — если показатель не про вас (например, GMV для тех, кто не продаёт на маркетплейсах), просто оставьте пустым.</div>
+      <form id="reportForm">
+        ${groupsHtml}
+        ${textHtml}
+      </form>
+    </div></div>
+    <div class="savebar"><div class="container">
+      <button class="btn btn-primary" data-act="save-report">Сохранить отчёт</button>
+    </div></div>
+  </div>`;
+}
+
+function renderAdminApp(){
+  const months = genRecentMonths(12);
+  const monthOpts = months.map(m=>`<option value="${m}" ${m===S.adminMonth?'selected':''}>${monthLabel(m)}</option>`).join('');
+
+  let tabContent = '';
+  if(S.adminTab==='overview') tabContent = renderOverviewTab();
+  if(S.adminTab==='companies') tabContent = renderCompaniesTab();
+  if(S.adminTab==='settings') tabContent = renderSettingsTab();
+
+  app.innerHTML = `
+  <div class="screen">
+    <div class="topbar">
+      <div><div class="brand">Портфель — сводка</div><div class="sub">Панель администратора</div></div>
+      <button data-act="logout">Выйти</button>
+    </div>
+    <div class="content"><div class="container">
+      <div class="tabbar">
+        <button data-act="admin-tab" data-tab="overview" class="${S.adminTab==='overview'?'active':''}">Обзор</button>
+        <button data-act="admin-tab" data-tab="companies" class="${S.adminTab==='companies'?'active':''}">Компании</button>
+        <button data-act="admin-tab" data-tab="settings" class="${S.adminTab==='settings'?'active':''}">Настройки</button>
+      </div>
+      ${S.adminTab==='overview'?`
+        <div class="field" style="max-width:260px;">
+          <label>Месяц</label>
+          <select id="admin-month-select">${monthOpts}</select>
+        </div>`:''}
+      ${tabContent}
+    </div></div>
+  </div>`;
+
+  if(S.adminTab==='overview') finishOverviewRender();
+}
+
+function renderOverviewTab(){
+  const companies = S.config.companies.slice().sort((a,b)=>a.name.localeCompare(b.name,'ru'));
+  if(companies.length===0) return `<div class="empty-note">Компании ещё не добавлены — перейдите во вкладку «Компании».</div>`;
+  const cards = companies.map(co=>{
+    const expanded = S.expandedCoId===co.id;
+    return `
+    <div class="co-card">
+      <div class="co-head" data-act="toggle-co" data-id="${co.id}">
+        <div class="name">${escapeHtml(co.name)}</div>
+        <span class="badge pending" id="badge_${co.id}">…</span>
+      </div>
+      ${expanded?`<div class="co-detail" id="detail_${co.id}"></div>`:''}
+    </div>`;
+  }).join('');
+  return `<div class="metric-grid" id="summaryGrid"></div>${cards}`;
+}
+
+function renderCompaniesTab(){
+  const companies = S.config.companies.slice().sort((a,b)=>a.name.localeCompare(b.name,'ru'));
+  const rows = companies.map(c=>{
+    const revealed = !!S.revealedPasswords[c.id];
+    const editing = S.editingCoId === c.id;
+    const confirming = S.confirmingDeleteId === c.id;
+    const passBlock = editing
+      ? `<div class="pass-edit-row"><input type="text" id="editpass_${c.id}" class="pass-input" value="${escapeAttr(c.password)}" /></div>`
+      : `<div class="p">пароль: <button class="pass-toggle" data-act="toggle-pass" data-id="${c.id}">${revealed?escapeHtml(c.password):'••••••••'}</button></div>`;
+    const actionsBlock = editing ? `
+        <button class="icon-btn" data-act="save-co-pass" data-id="${c.id}">Сохранить</button>
+        <button class="icon-btn" data-act="cancel-co-pass" data-id="${c.id}">Отмена</button>`
+      : confirming ? `
+        <button class="icon-btn danger" data-act="confirm-remove-company" data-id="${c.id}">Точно удалить?</button>
+        <button class="icon-btn" data-act="cancel-remove-company" data-id="${c.id}">Отмена</button>`
+      : `
+        <button class="icon-btn" data-act="edit-co-pass" data-id="${c.id}">Пароль</button>
+        <button class="icon-btn danger" data-act="remove-company" data-id="${c.id}">Удалить</button>`;
+    return `
+    <div class="co-row">
+      <div class="info"><div class="n">${escapeHtml(c.name)}</div>${passBlock}</div>
+      <div class="co-row-actions">${actionsBlock}</div>
+    </div>`;
+  }).join('') || `<div class="empty-note">Пока нет компаний.</div>`;
+
+  return `
+  <div class="card">
+    <div class="section-title" style="margin-top:0;">Добавить компанию</div>
+    <div class="field"><label>Название</label><input id="new-co-name" placeholder="Например, Rocket Padel"/></div>
+    <div class="field"><label>Пароль</label><input id="new-co-pass" placeholder="Придумайте пароль"/></div>
+    <button class="btn btn-primary" data-act="add-company">Добавить</button>
+  </div>
+  <div class="section-title">Список компаний (${companies.length})</div>
+  <div class="card">${rows}</div>`;
+}
+
+function renderSettingsTab(){
+  return `
+  <div class="card">
+    <div class="section-title" style="margin-top:0;">Пароль администратора</div>
+    <div class="field"><label>Новый пароль</label><input id="new-admin-pass" type="text" placeholder="Новый пароль"/></div>
+    <button class="btn btn-primary" data-act="save-admin-pass">Сохранить</button>
+  </div>
+  <div class="card">
+    <div class="section-title" style="margin-top:0;">Резервная копия</div>
+    <p style="font-size:13px;color:var(--ink2);margin:0 0 12px;">Скачивает все компании и все отчёты в один файл. Делайте это регулярно — на случай проблем со ссылкой.</p>
+    <button class="btn" data-act="export-backup">Скачать резервную копию (.json)</button>
+  </div>`;
+}
+
+async function finishOverviewRender(){
+  const companies = S.config.companies;
+  const m = S.adminMonth, pm = prevMonthStr(m);
+  let submitted = 0, totalRevenue = 0, revCount=0, revPrevSum=0, revPrevCount=0;
+  for(const co of companies){
+    const rep = await loadCoDetail(co.id, m);
+    const badge = document.getElementById('badge_'+co.id);
+    if(badge){
+      if(rep){ badge.textContent='Сдано'; badge.className='badge done'; submitted++; }
+      else{ badge.textContent='Не сдано'; badge.className='badge pending'; }
+    }
+    if(rep && rep.revenue_actual!=null){ totalRevenue += Number(rep.revenue_actual)||0; revCount++; }
+    const prep = await loadCoDetail(co.id, pm);
+    if(prep && prep.revenue_actual!=null){ revPrevSum += Number(prep.revenue_actual)||0; revPrevCount++; }
+  }
+  const grid = document.getElementById('summaryGrid');
+  if(grid){
+    const deltaSum = revPrevCount>0 ? deltaHtml(totalRevenue, revPrevSum) : '';
+    grid.innerHTML = `
+      <div class="metric-card"><div class="l">Сдали отчёт</div><div class="v">${submitted}/${companies.length}</div></div>
+      <div class="metric-card"><div class="l">Суммарная выручка</div><div class="v">${fmtNum(totalRevenue,0)} ₽</div><div style="margin-top:4px;">${deltaSum}</div></div>
+    `;
+  }
+  if(S.expandedCoId){ await renderCoDetail(S.expandedCoId); }
+}
+
+async function renderCoDetail(coId){
+  const el = document.getElementById('detail_'+coId);
+  if(!el) return;
+  const months = genRecentMonths(12);
+  const monthOptsA = months.map(mo=>`<option value="${mo}" ${mo===S.compareA?'selected':''}>${monthLabel(mo)}</option>`).join('');
+  const monthOptsB = months.map(mo=>`<option value="${mo}" ${mo===S.compareB?'selected':''}>${monthLabel(mo)}</option>`).join('');
+  const repA = await loadCoDetail(coId, S.compareA);
+  const repB = await loadCoDetail(coId, S.compareB);
+
+  const groupsHtml = FIELD_GROUPS.map(g=>`
+    <div class="group-label">${g.title}</div>
+    ${g.fields.map(f=>{
+      const va = repA ? repA[f.id] : null;
+      const vb = repB ? repB[f.id] : null;
+      return `<div class="ledger-row">
+        <div class="lbl">${f.label}</div>
+        <div class="vals">
+          <span class="val num">${fmtValue(f, va)}</span>
+          ${deltaHtml(va, vb)}
+        </div>
+      </div>`;
+    }).join('')}
+  `).join('');
+
+  const textHtml = repA ? TEXT_FIELDS.map(f=>{
+    if(!repA[f.id]) return '';
+    return `<div class="textblock"><span class="k">${f.label}</span>${linkify(repA[f.id])}</div>`;
+  }).join('') : '';
+
+  el.innerHTML = `
+    <div class="compare-row">
+      <select class="compare-select" data-which="a">${monthOptsA}</select>
+      <select class="compare-select" data-which="b">${monthOptsB}</select>
+    </div>
+    ${!repA?`<div class="empty-note">Нет отчёта за ${monthLabel(S.compareA)}.</div>`:groupsHtml+textHtml}
+    <div class="group-label">Динамика</div>
+    <select id="chart-metric-select" class="small-select">
+      <option value="">Выберите показатель…</option>
+      ${FIELD_GROUPS.flatMap(g=>g.fields).map(f=>`<option value="${f.id}" ${S.chartMetric===f.id?'selected':''}>${f.label}</option>`).join('')}
+    </select>
+    <div class="chart-wrap ${S.chartMetric?'':'hidden'}" id="chartWrap"><canvas id="trendChart" height="180"></canvas></div>
+  `;
+  if(S.chartMetric) await renderChart();
+}
+
+let chartInstance = null;
+async function renderChart(){
+  const coId = S.expandedCoId;
+  const field = FIELD_GROUPS.flatMap(g=>g.fields).find(f=>f.id===S.chartMetric);
+  if(!coId || !field) return;
+  const doneMonths = (await listCompanyMonths(coId)).sort();
+  const vals = [];
+  for(const m of doneMonths){
+    const rep = await loadCoDetail(coId, m);
+    vals.push(rep && rep[field.id]!=null ? Number(rep[field.id]) : null);
+  }
+  const wrap = document.getElementById('chartWrap');
+  if(wrap) wrap.classList.remove('hidden');
+  const ctx = document.getElementById('trendChart');
+  if(!ctx) return;
+  if(chartInstance) chartInstance.destroy();
+  chartInstance = new Chart(ctx, {
+    type:'line',
+    data:{ labels: doneMonths.map(monthLabel), datasets:[{
+      label: field.label, data: vals, borderColor:'#A9762C', backgroundColor:'rgba(169,118,44,0.12)',
+      tension:0.25, fill:true, spanGaps:true, pointRadius:3,
+    }]},
+    options:{ responsive:true, plugins:{legend:{display:false}}, scales:{ y:{ beginAtZero:false } } }
+  });
+}
+
+function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function escapeAttr(s){ return escapeHtml(s); }
+function linkify(s){
+  const escaped = escapeHtml(s);
+  return escaped.replace(/(https?:\/\/[^\s<]+|www\.[^\s<]+)/gi, (match)=>{
+    const href = match.startsWith('http') ? match : 'https://'+match;
+    return `<a href="${href}" target="_blank" rel="noopener">${match}</a>`;
+  });
+}
+
+/* ---------- init ---------- */
+(async function init(){
+  app.innerHTML = `<div class="center-screen"><p style="color:var(--ink2);">Загрузка…</p></div>`;
+  try{
+    S.config = await loadConfig();
+    render();
+  }catch(e){
+    app.innerHTML = `<div class="center-screen"><div class="login-card"><h1>Не удалось загрузить данные</h1><p class="lead">Проверьте интернет-соединение и обновите страницу. Если ошибка повторяется, напишите администратору.</p></div></div>`;
+  }
+})();
+</script>
+</body>
+</html>
