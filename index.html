@@ -57,6 +57,13 @@ input,select,textarea{font-family:inherit;font-size:15px;}
 .error-msg{background:var(--negative-soft);color:var(--negative);font-size:13px;padding:9px 12px;border-radius:var(--radius);margin-bottom:14px;}
 .hint-note{background:var(--accent-soft);color:#6B4A17;font-size:12.5px;padding:9px 12px;border-radius:var(--radius);margin-bottom:12px;}
 .link-hint{background:var(--bg);color:var(--ink2);font-size:12px;padding:8px 10px;border-radius:8px;margin:0 0 12px;}
+.attach-row{display:flex;align-items:center;gap:10px;margin-top:6px;flex-wrap:wrap;}
+.attach-btn{display:inline-block;font-size:12.5px;color:var(--accent);border:0.5px solid var(--accent);border-radius:8px;padding:6px 12px;cursor:pointer;background:var(--accent-soft);}
+.attach-btn:hover{background:var(--accent);color:#fff;}
+.attach-input{display:none;}
+.attach-status{font-size:12px;color:var(--ink3);}
+.attach-status.ok{color:var(--positive);}
+.attach-status.err{color:var(--negative);}
 .pass-input-wrap{display:flex;align-items:stretch;gap:6px;}
 .pass-input-wrap input{flex:1;min-width:0;width:auto;}
 .eye-btn{background:#fff;border:0.5px solid var(--border);border-radius:var(--radius);padding:0 12px;font-size:16px;color:var(--ink2);flex-shrink:0;}
@@ -189,7 +196,7 @@ const FIELD_GROUPS = [
     {id:'new_clients', label:'Новые клиенты', type:'count', unit:'шт'},
     {id:'repeat_clients', label:'Повторные покупки/визиты', type:'count', unit:'шт'},
     {id:'churned_clients', label:'Ушедшие клиенты', type:'count', unit:'шт'},
-    {id:'cac', label:'CAC', type:'money'},
+    {id:'cac', label:'CAC (сколько стоило привлечь одного клиента)', type:'money'},
     {id:'ltv', label:'LTV (сколько в среднем приносит один клиент за всё время)', type:'money'},
     {id:'retention_rate', label:'Процент удержания клиентов', type:'percent'},
   ]},
@@ -320,6 +327,21 @@ async function saveReportData(companyId, month, data){
 async function listCompanyMonths(companyId){
   const rows = await sb(`reports?select=month&company_id=eq.${encodeURIComponent(companyId)}&order=month.desc`);
   return (rows||[]).map(r=>r.month);
+}
+async function uploadToStorage(file, pathPrefix){
+  const safeName = file.name.replace(/[^a-zA-Z0-9.\-_]/g, '_');
+  const path = `${pathPrefix}/${Date.now()}-${safeName}`;
+  const res = await fetch(`${SUPABASE_URL}/storage/v1/object/report-files/${path}`, {
+    method: 'POST',
+    headers: {
+      'apikey': SUPABASE_KEY,
+      'Authorization': 'Bearer ' + SUPABASE_KEY,
+      'Content-Type': file.type || 'application/octet-stream',
+    },
+    body: file
+  });
+  if(!res.ok){ throw new Error('Upload failed: ' + res.status + ' ' + await res.text()); }
+  return `${SUPABASE_URL}/storage/v1/object/public/report-files/${path}`;
 }
 
 /* ---------- state ---------- */
@@ -507,6 +529,22 @@ app.addEventListener('change', async (e)=>{
     S.chartMetric = e.target.value;
     await renderChart();
   }
+  if(e.target.matches('input[type=file][data-attach-for]')){
+    const fieldId = e.target.dataset.attachFor;
+    const file = e.target.files[0];
+    if(!file) return;
+    const statusEl = document.getElementById('attach_status_'+fieldId);
+    if(statusEl){ statusEl.textContent = 'Загрузка…'; statusEl.className='attach-status'; }
+    try{
+      const url = await uploadToStorage(file, `${S.companyId}/${S.companyMonth}`);
+      const ta = document.getElementById('f_'+fieldId);
+      ta.value = (ta.value ? ta.value + '\n' : '') + url;
+      if(statusEl){ statusEl.textContent = '✓ Прикреплено: ' + file.name; statusEl.className='attach-status ok'; }
+    }catch(err){
+      if(statusEl){ statusEl.textContent = 'Не удалось загрузить, попробуйте ещё раз'; statusEl.className='attach-status err'; }
+    }
+    e.target.value = '';
+  }
 });
 
 async function enterCompanyMonth(m){
@@ -632,11 +670,16 @@ function renderCompanyApp(){
     <div class="acc">
       <div class="acc-head" data-act="toggle-acc"><h3>Комментарии</h3><span class="chev">▸</span></div>
       <div class="acc-body"><div class="acc-body-inner">
-        <p class="link-hint">Есть фото, видео или файл — вставьте на них ссылку (Google Диск, Telegram и т.п.) прямо в текст, она станет кликабельной.</p>
+        <p class="link-hint">Можно прикрепить фото, видео или файл прямо кнопкой ниже — или просто вставить ссылку в текст.</p>
         ${TEXT_FIELDS.map(f=>`
           <div class="field" style="margin-top:10px;">
             <label>${f.label}</label>
             <textarea data-field="${f.id}" id="f_${f.id}">${rep[f.id]?escapeHtml(rep[f.id]):''}</textarea>
+            <div class="attach-row">
+              <label class="attach-btn" for="file_${f.id}">📎 Прикрепить фото/видео/файл</label>
+              <input type="file" id="file_${f.id}" data-attach-for="${f.id}" class="attach-input" accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx" />
+              <span class="attach-status" id="attach_status_${f.id}"></span>
+            </div>
           </div>`).join('')}
       </div></div>
     </div>`;
