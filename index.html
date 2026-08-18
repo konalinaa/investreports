@@ -97,6 +97,10 @@ select{appearance:none;-webkit-appearance:none;background-image:url("data:image/
 .ledger-row .lbl{font-size:13.5px;color:var(--ink2);flex:1;min-width:0;}
 .ledger-row .vals{display:flex;align-items:baseline;gap:10px;flex-shrink:0;}
 .ledger-row .val{font-size:14.5px;font-weight:500;}
+.ledger-card{background:#fff;border:0.5px solid var(--border);border-left:4px solid var(--accent);border-radius:12px;padding:6px 16px 4px;margin-bottom:14px;}
+.ledger-card-head{display:flex;align-items:center;gap:9px;padding:10px 0 6px;}
+.ledger-icon{font-size:17px;line-height:1;}
+.ledger-title{font-family:'Source Serif 4',serif;font-size:15.5px;font-weight:600;color:var(--ink);}
 .delta{font-size:12px;padding:2px 7px;border-radius:20px;font-weight:500;}
 .delta.up{background:var(--positive-soft);color:var(--positive);}
 .delta.down{background:var(--negative-soft);color:var(--negative);}
@@ -187,7 +191,7 @@ select{appearance:none;-webkit-appearance:none;background-image:url("data:image/
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.0/chart.umd.min.js"></script>
 <script>
 const FIELD_GROUPS = [
-  {id:'fin', title:'Финансы', fields:[
+  {id:'fin', title:'Финансы', icon:'💰', color:'#8B6F47', fields:[
     {id:'revenue_actual', label:'Выручка (факт)', type:'money'},
     {id:'revenue_plan', label:'Выручка (план)', type:'money'},
     {id:'gross_profit', label:'Валовая прибыль', type:'money'},
@@ -202,14 +206,14 @@ const FIELD_GROUPS = [
     {id:'burn_rate', label:'Сколько тратите сверх заработанного за месяц', type:'money', lowerIsBetter:true},
     {id:'runway', label:'На сколько месяцев хватит денег при таком расходе', type:'months'},
   ]},
-  {id:'sales', title:'Продажи', fields:[
+  {id:'sales', title:'Продажи', icon:'🛒', color:'#4A7C59', fields:[
     {id:'orders_count', label:'Количество продаж/заказов', type:'count', unit:'шт'},
     {id:'bookings_count', label:'Количество бронирований', type:'count', unit:'шт'},
     {id:'gmv', label:'GMV (оборот на маркетплейсах)', type:'money'},
     {id:'avg_check', label:'Средний чек — продажи', type:'money'},
     {id:'avg_check_booking', label:'Средний чек — бронирование', type:'money'},
   ]},
-  {id:'clients', title:'Клиенты', fields:[
+  {id:'clients', title:'Клиенты', icon:'👥', color:'#5B6B8C', fields:[
     {id:'active_clients', label:'Активные клиенты', type:'count', unit:'шт'},
     {id:'new_clients', label:'Новые клиенты', type:'count', unit:'шт'},
     {id:'repeat_clients', label:'Повторные покупки/визиты', type:'count', unit:'шт'},
@@ -218,14 +222,14 @@ const FIELD_GROUPS = [
     {id:'ltv', label:'LTV (сколько в среднем приносит один клиент за всё время)', type:'money'},
     {id:'retention_rate', label:'Процент удержания клиентов', type:'percent'},
   ]},
-  {id:'marketing', title:'Маркетинг', fields:[
+  {id:'marketing', title:'Маркетинг', icon:'📣', color:'#B8674D', fields:[
     {id:'ad_budget', label:'Рекламный бюджет', type:'money'},
     {id:'roas', label:'ROAS (сколько принесла реклама на 1 ₽ бюджета)', type:'ratio'},
     {id:'cpl', label:'CPL (стоимость одной заявки или лида)', type:'money', lowerIsBetter:true},
     {id:'traffic', label:'Трафик / посетители за месяц', type:'count', unit:'чел'},
     {id:'conversion', label:'Конверсия в покупку', type:'percent'},
   ]},
-  {id:'team', title:'Команда', fields:[
+  {id:'team', title:'Команда', icon:'🧑\u200d💼', color:'#6B5B7B', fields:[
     {id:'headcount', label:'Всего сотрудников', type:'count', unit:'чел'},
     {id:'hires', label:'Наняли', type:'count', unit:'чел'},
     {id:'departures', label:'Уволились/уволили', type:'count', unit:'чел'},
@@ -930,18 +934,20 @@ function renderHeroCards(repCurrent, repPrev, showDelta){
 }
 function renderMetricsLedger(repCurrent, repPrev, showDelta){
   return FIELD_GROUPS.map(g=>`
-    <div class="group-label">${g.title}</div>
-    ${g.fields.map(f=>{
-      const va = repCurrent ? repCurrent[f.id] : null;
-      const vb = repPrev ? repPrev[f.id] : null;
-      return `<div class="ledger-row">
-        <div class="lbl">${f.label}</div>
-        <div class="vals">
-          <span class="val num">${fmtValue(f, va)}</span>
-          ${showDelta ? deltaHtml(va, vb, f.lowerIsBetter) : ''}
-        </div>
-      </div>`;
-    }).join('')}
+    <div class="ledger-card" style="border-left-color:${g.color};">
+      <div class="ledger-card-head"><span class="ledger-icon">${g.icon}</span><span class="ledger-title">${g.title}</span></div>
+      ${g.fields.map(f=>{
+        const va = repCurrent ? repCurrent[f.id] : null;
+        const vb = repPrev ? repPrev[f.id] : null;
+        return `<div class="ledger-row">
+          <div class="lbl">${f.label}</div>
+          <div class="vals">
+            <span class="val num">${fmtValue(f, va)}</span>
+            ${showDelta ? deltaHtml(va, vb, f.lowerIsBetter) : ''}
+          </div>
+        </div>`;
+      }).join('')}
+    </div>
   `).join('');
 }
 function renderTextBlocks(rep){
