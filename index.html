@@ -41,7 +41,7 @@ input,select,textarea{font-family:inherit;font-size:15px;}
 .login-card p.lead{color:var(--ink2);font-size:14px;margin:0 0 24px;}
 .field{margin-bottom:16px;}
 .field label{display:block;font-size:13px;color:var(--ink2);margin-bottom:6px;}
-.field input,.field select,.field textarea{width:100%;padding:10px 12px;border:0.5px solid var(--border);border-radius:var(--radius);background:#fff;color:var(--ink);}
+.field input,.field select,.field textarea{width:100%;padding:10px 12px;border:0.5px solid var(--border);border-radius:var(--radius);background-color:#fff;color:var(--ink);}
 .field input:focus,.field select:focus,.field textarea:focus{outline:2px solid var(--accent);outline-offset:0;}
 select{appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='%2357624F' stroke-width='2'%3E%3Cpath d='M6 8l4 4 4-4'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center;background-size:16px;padding-right:38px !important;}
 .field textarea{resize:vertical;min-height:70px;}
@@ -119,9 +119,13 @@ select{appearance:none;-webkit-appearance:none;background-image:url("data:image/
 .co-head .chev{color:var(--ink3);font-size:13px;transition:transform 0.15s;margin-left:10px;}
 .co-card.open .co-head .chev{transform:rotate(90deg);}
 .co-detail{padding:0 16px 16px;border-top:0.5px solid var(--border-soft);}
-.compare-row{display:flex;gap:8px;margin:14px 0 6px;}
+.compare-row{display:flex;gap:8px;margin:14px 0 6px;align-items:stretch;}
 .compare-row .btn{width:auto;flex:1;}
 .compare-row select{flex:1;padding:8px;border:0.5px solid var(--border);border-radius:8px;font-size:13px;}
+.btn-compare-toggle{flex:1;background:var(--accent-soft);border:1px dashed var(--accent);color:#6B4A17;border-radius:8px;padding:9px 12px;font-size:13px;font-weight:500;}
+.btn-compare-toggle:hover{background:var(--accent);color:#fff;border-style:solid;}
+.btn-compare-off{flex:0 0 auto;background:#fff;border:0.5px solid var(--border);color:var(--ink3);border-radius:8px;padding:0 12px;font-size:14px;}
+.btn-compare-off:hover{background:var(--negative-soft);color:var(--negative);border-color:var(--negative-soft);}
 .group-label{font-size:12px;text-transform:uppercase;letter-spacing:0.03em;color:var(--ink3);margin:14px 0 4px;}
 .textblock{background:var(--bg);border-radius:8px;padding:10px 12px;font-size:13.5px;color:var(--ink);margin-top:6px;white-space:pre-wrap;}
 .textblock .k{font-size:11px;color:var(--ink3);text-transform:uppercase;letter-spacing:0.03em;display:block;margin-bottom:3px;}
@@ -483,6 +487,10 @@ async function onAppClick(e){
   if(act==='enable-compare'){
     S.compareEnabled = true;
     await loadCoDetail(S.expandedCoId, S.compareB);
+    render();
+  }
+  if(act==='disable-compare'){
+    S.compareEnabled = false;
     render();
   }
 
@@ -912,8 +920,8 @@ async function renderCoDetail(coId){
     <div class="compare-row">
       <select class="compare-select" data-which="a">${monthOptsA}</select>
       ${S.compareEnabled
-        ? `<select class="compare-select" data-which="b">${monthOptsB}</select>`
-        : `<button class="btn" data-act="enable-compare" data-id="${coId}">Сравнить с другим месяцем</button>`}
+        ? `<select class="compare-select" data-which="b">${monthOptsB}</select><button class="btn-compare-off" data-act="disable-compare" title="Убрать сравнение">✕</button>`
+        : `<button class="btn-compare-toggle" data-act="enable-compare" data-id="${coId}">🔀 Сравнить с другим месяцем</button>`}
     </div>
     ${!repA?`<div class="empty-note">Нет отчёта за ${monthLabel(S.compareA)}.</div>`:groupsHtml+textHtml}
     ${repA ? `
