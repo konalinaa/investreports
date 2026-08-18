@@ -194,12 +194,12 @@ const FIELD_GROUPS = [
     {id:'gross_margin', label:'Валовая маржа', type:'percent'},
     {id:'ebitda', label:'EBITDA', type:'money'},
     {id:'net_profit', label:'Чистая прибыль', type:'money'},
-    {id:'cogs', label:'Себестоимость (сумма прямых затрат на то, что продали за месяц — например, продукты для ресторана или сырьё для товара)', type:'money'},
-    {id:'opex', label:'Операционные расходы', type:'money'},
+    {id:'cogs', label:'Себестоимость (сумма прямых затрат на то, что продали за месяц — например, продукты для ресторана или сырьё для товара)', type:'money', lowerIsBetter:true},
+    {id:'opex', label:'Операционные расходы', type:'money', lowerIsBetter:true},
     {id:'cash_balance', label:'Остаток на счетах', type:'money'},
     {id:'receivables', label:'Дебиторская задолженность', type:'money'},
     {id:'payables', label:'Кредиторская задолженность', type:'money'},
-    {id:'burn_rate', label:'Сколько тратите сверх заработанного за месяц', type:'money'},
+    {id:'burn_rate', label:'Сколько тратите сверх заработанного за месяц', type:'money', lowerIsBetter:true},
     {id:'runway', label:'На сколько месяцев хватит денег при таком расходе', type:'months'},
   ]},
   {id:'sales', title:'Продажи', fields:[
@@ -213,15 +213,15 @@ const FIELD_GROUPS = [
     {id:'active_clients', label:'Активные клиенты', type:'count', unit:'шт'},
     {id:'new_clients', label:'Новые клиенты', type:'count', unit:'шт'},
     {id:'repeat_clients', label:'Повторные покупки/визиты', type:'count', unit:'шт'},
-    {id:'churned_clients', label:'Ушедшие клиенты', type:'count', unit:'шт'},
-    {id:'cac', label:'CAC (сколько стоило привлечь одного клиента)', type:'money'},
+    {id:'churned_clients', label:'Ушедшие клиенты', type:'count', unit:'шт', lowerIsBetter:true},
+    {id:'cac', label:'CAC (сколько стоило привлечь одного клиента)', type:'money', lowerIsBetter:true},
     {id:'ltv', label:'LTV (сколько в среднем приносит один клиент за всё время)', type:'money'},
     {id:'retention_rate', label:'Процент удержания клиентов', type:'percent'},
   ]},
   {id:'marketing', title:'Маркетинг', fields:[
     {id:'ad_budget', label:'Рекламный бюджет', type:'money'},
     {id:'roas', label:'ROAS (сколько принесла реклама на 1 ₽ бюджета)', type:'ratio'},
-    {id:'cpl', label:'CPL (стоимость одной заявки или лида)', type:'money'},
+    {id:'cpl', label:'CPL (стоимость одной заявки или лида)', type:'money', lowerIsBetter:true},
     {id:'traffic', label:'Трафик / посетители за месяц', type:'count', unit:'чел'},
     {id:'conversion', label:'Конверсия в покупку', type:'percent'},
   ]},
@@ -253,9 +253,14 @@ function prevMonthStr(m){
   mo -= 1; if(mo===0){mo=12;y-=1;}
   return y+'-'+String(mo).padStart(2,'0');
 }
+const MONTH_FLOOR = '2026-01';
 function genRecentMonths(count){
   let m = currentMonthStr(); const out=[m];
-  for(let i=1;i<count;i++){ m = prevMonthStr(m); out.push(m); }
+  for(let i=1;i<count;i++){
+    const next = prevMonthStr(m);
+    if(next < MONTH_FLOOR) break;
+    m = next; out.push(m);
+  }
   return out;
 }
 function fmtNum(v, digits){
@@ -275,7 +280,7 @@ function fmtValue(field, v){
     default: return String(v);
   }
 }
-function deltaHtml(curr, prev){
+function deltaHtml(curr, prev, lowerIsBetter){
   if(curr===null||curr===undefined||curr===''||prev===null||prev===undefined||prev===''){
     return '<span class="delta muted">не с чем сравнить</span>';
   }
@@ -286,8 +291,11 @@ function deltaHtml(curr, prev){
     return '<span class="delta muted">—</span>';
   }
   const pct = ((c-p)/Math.abs(p))*100;
-  const cls = pct>0.05?'up':pct<-0.05?'down':'flat';
-  const arrow = pct>0.05?'▲':pct<-0.05?'▼':'•';
+  const numUp = pct>0.05, numDown = pct<-0.05;
+  const isGood = lowerIsBetter ? numDown : numUp;
+  const isBad = lowerIsBetter ? numUp : numDown;
+  const cls = isGood?'up':isBad?'down':'flat';
+  const arrow = numUp?'▲':numDown?'▼':'•';
   const label = (pct>=0?'+':'')+fmtNum(pct,1)+'%';
   return `<span class="delta ${cls}">${arrow} ${label}</span>`;
 }
@@ -916,7 +924,7 @@ function renderHeroCards(repCurrent, repPrev, showDelta){
     return `<div class="hero-card">
       <div class="hero-label">${f.label}</div>
       <div class="hero-value">${fmtValue(f, va)}</div>
-      ${showDelta ? `<div class="hero-delta">${deltaHtml(va, vb)}</div>` : ''}
+      ${showDelta ? `<div class="hero-delta">${deltaHtml(va, vb, f.lowerIsBetter)}</div>` : ''}
     </div>`;
   }).join('') + `</div>`;
 }
@@ -930,7 +938,7 @@ function renderMetricsLedger(repCurrent, repPrev, showDelta){
         <div class="lbl">${f.label}</div>
         <div class="vals">
           <span class="val num">${fmtValue(f, va)}</span>
-          ${showDelta ? deltaHtml(va, vb) : ''}
+          ${showDelta ? deltaHtml(va, vb, f.lowerIsBetter) : ''}
         </div>
       </div>`;
     }).join('')}
