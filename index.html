@@ -904,7 +904,7 @@ async function renderCoDetail(coId){
       <select class="compare-select" data-which="b">${monthOptsB}</select>
     </div>
     ${!repA?`<div class="empty-note">Нет отчёта за ${monthLabel(S.compareA)}.</div>`:groupsHtml+textHtml}
-    ${repA && repB ? `
+    ${repA ? `
     <div class="group-label">ИИ-анализ</div>
     <button class="btn" data-act="run-ai-analysis" data-id="${coId}">🤖 Получить анализ</button>
     <div class="ai-analysis-box" id="ai-analysis-${coId}"></div>
