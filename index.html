@@ -134,6 +134,11 @@ select{appearance:none;-webkit-appearance:none;background-image:url("data:image/
 .ai-analysis-box:empty{display:none;}
 .ai-analysis-box.loading{color:var(--ink3);font-style:italic;}
 .ai-analysis-box.err{background:var(--negative-soft);color:var(--negative);}
+.hero-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:4px 0 20px;}
+.hero-card{background:#fff;border:0.5px solid var(--border);border-radius:12px;padding:14px;}
+.hero-label{font-size:12px;color:var(--ink2);margin-bottom:4px;}
+.hero-value{font-family:'Source Serif 4',serif;font-size:21px;font-weight:600;color:var(--ink);}
+.hero-delta{margin-top:5px;}
 
 /* tabs */
 .tabbar{display:flex;gap:4px;background:#fff;border:0.5px solid var(--border);border-radius:12px;padding:4px;margin-bottom:16px;}
@@ -375,7 +380,7 @@ async function analyzeReport(companyName, current, previous){
 /* ---------- state ---------- */
 const S = {
   config:null, view:'landing', role:null, companyId:null, loginError:'',
-  companyMonth:null, companyReport:null, companyMonthsDone:[],
+  companyMonth:null, companyReport:null, companyPrevReport:null, companyMonthsDone:[],
   adminTab:'overview', adminMonth:null, expandedCoId:null,
   compareA:null, compareB:null, compareEnabled:false, chartMetric:null, coDetailCache:{},
   revealedPasswords:{}, editingCoId:null, confirmingDeleteId:null,
@@ -606,6 +611,7 @@ app.addEventListener('change', async (e)=>{
 async function enterCompanyMonth(m){
   S.companyMonth = m;
   S.companyReport = await loadReport(S.companyId, m) || {};
+  S.companyPrevReport = await loadReport(S.companyId, prevMonthStr(m));
 }
 async function loadCoDetail(companyId, month){
   const key = companyId+':'+month;
@@ -750,7 +756,19 @@ function renderCompanyApp(){
       <div class="section-title">Месяц отчёта</div>
       <div class="months-list">${monthsChips}</div>
 
-      <div class="section-title" style="margin-top:22px;">${monthLabel(S.companyMonth)}</div>
+      ${Object.keys(rep).length > 0 ? `
+      <div class="section-title" style="margin-top:22px;">Ваш отчёт — ${monthLabel(S.companyMonth)}</div>
+      ${renderHeroCards(rep, S.companyPrevReport, true)}
+      <div class="acc">
+        <div class="acc-head" data-act="toggle-acc"><h3>Все показатели</h3><span class="chev">▸</span></div>
+        <div class="acc-body"><div class="acc-body-inner">
+          ${renderMetricsLedger(rep, S.companyPrevReport, true)}
+          ${renderTextBlocks(rep)}
+        </div></div>
+      </div>
+      ` : ''}
+
+      <div class="section-title" style="margin-top:22px;">Редактировать — ${monthLabel(S.companyMonth)}</div>
       <div class="hint-note">Не все поля подходят под любой бизнес — если показатель не про вас (например, GMV для тех, кто не продаёт на маркетплейсах), просто оставьте пустым.</div>
       <form id="reportForm">
         ${groupsHtml}
@@ -887,6 +905,45 @@ async function finishOverviewRender(){
   if(S.expandedCoId){ await renderCoDetail(S.expandedCoId); }
 }
 
+const HERO_METRICS = ['revenue_actual', 'net_profit', 'active_clients', 'cash_balance'];
+function renderHeroCards(repCurrent, repPrev, showDelta){
+  const allFields = FIELD_GROUPS.flatMap(g=>g.fields);
+  return `<div class="hero-grid">` + HERO_METRICS.map(id=>{
+    const f = allFields.find(x=>x.id===id);
+    if(!f) return '';
+    const va = repCurrent ? repCurrent[id] : null;
+    const vb = repPrev ? repPrev[id] : null;
+    return `<div class="hero-card">
+      <div class="hero-label">${f.label}</div>
+      <div class="hero-value">${fmtValue(f, va)}</div>
+      ${showDelta ? `<div class="hero-delta">${deltaHtml(va, vb)}</div>` : ''}
+    </div>`;
+  }).join('') + `</div>`;
+}
+function renderMetricsLedger(repCurrent, repPrev, showDelta){
+  return FIELD_GROUPS.map(g=>`
+    <div class="group-label">${g.title}</div>
+    ${g.fields.map(f=>{
+      const va = repCurrent ? repCurrent[f.id] : null;
+      const vb = repPrev ? repPrev[f.id] : null;
+      return `<div class="ledger-row">
+        <div class="lbl">${f.label}</div>
+        <div class="vals">
+          <span class="val num">${fmtValue(f, va)}</span>
+          ${showDelta ? deltaHtml(va, vb) : ''}
+        </div>
+      </div>`;
+    }).join('')}
+  `).join('');
+}
+function renderTextBlocks(rep){
+  if(!rep) return '';
+  return TEXT_FIELDS.map(f=>{
+    if(!rep[f.id]) return '';
+    return `<div class="textblock"><span class="k">${f.label}</span>${linkify(rep[f.id])}</div>`;
+  }).join('');
+}
+
 async function renderCoDetail(coId){
   const el = document.getElementById('detail_'+coId);
   if(!el) return;
@@ -896,26 +953,6 @@ async function renderCoDetail(coId){
   const repA = await loadCoDetail(coId, S.compareA);
   const repB = S.compareEnabled ? await loadCoDetail(coId, S.compareB) : null;
 
-  const groupsHtml = FIELD_GROUPS.map(g=>`
-    <div class="group-label">${g.title}</div>
-    ${g.fields.map(f=>{
-      const va = repA ? repA[f.id] : null;
-      const vb = repB ? repB[f.id] : null;
-      return `<div class="ledger-row">
-        <div class="lbl">${f.label}</div>
-        <div class="vals">
-          <span class="val num">${fmtValue(f, va)}</span>
-          ${S.compareEnabled ? deltaHtml(va, vb) : ''}
-        </div>
-      </div>`;
-    }).join('')}
-  `).join('');
-
-  const textHtml = repA ? TEXT_FIELDS.map(f=>{
-    if(!repA[f.id]) return '';
-    return `<div class="textblock"><span class="k">${f.label}</span>${linkify(repA[f.id])}</div>`;
-  }).join('') : '';
-
   el.innerHTML = `
     <div class="compare-row">
       <select class="compare-select" data-which="a">${monthOptsA}</select>
@@ -923,7 +960,7 @@ async function renderCoDetail(coId){
         ? `<select class="compare-select" data-which="b">${monthOptsB}</select><button class="btn-compare-off" data-act="disable-compare" title="Убрать сравнение">✕</button>`
         : `<button class="btn-compare-toggle" data-act="enable-compare" data-id="${coId}">🔀 Сравнить с другим месяцем</button>`}
     </div>
-    ${!repA?`<div class="empty-note">Нет отчёта за ${monthLabel(S.compareA)}.</div>`:groupsHtml+textHtml}
+    ${!repA?`<div class="empty-note">Нет отчёта за ${monthLabel(S.compareA)}.</div>`:renderHeroCards(repA,repB,S.compareEnabled)+renderMetricsLedger(repA,repB,S.compareEnabled)+renderTextBlocks(repA)}
     ${repA ? `
     <div class="group-label">ИИ-анализ</div>
     <button class="btn" data-act="run-ai-analysis" data-id="${coId}">🤖 Получить анализ</button>
