@@ -441,7 +441,7 @@ async function onAppClick(e){
       const text = await analyzeReport(co.name, repA, repB);
       if(box){ box.textContent = text; box.className = 'ai-analysis-box'; }
     }catch(err){
-      if(box){ box.textContent = 'Не удалось получить анализ, попробуйте ещё раз.'; box.className = 'ai-analysis-box err'; }
+      if(box){ box.textContent = 'Ошибка: ' + (err.message || err); box.className = 'ai-analysis-box err'; }
     }
     t.disabled = false;
   }
