@@ -43,6 +43,7 @@ input,select,textarea{font-family:inherit;font-size:15px;}
 .field label{display:block;font-size:13px;color:var(--ink2);margin-bottom:6px;}
 .field input,.field select,.field textarea{width:100%;padding:10px 12px;border:0.5px solid var(--border);border-radius:var(--radius);background:#fff;color:var(--ink);}
 .field input:focus,.field select:focus,.field textarea:focus{outline:2px solid var(--accent);outline-offset:0;}
+select{appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='%2357624F' stroke-width='2'%3E%3Cpath d='M6 8l4 4 4-4'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center;background-size:16px;padding-right:38px !important;}
 .field textarea{resize:vertical;min-height:70px;}
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:11px 18px;border-radius:var(--radius);border:0.5px solid var(--border);background:#fff;color:var(--ink);font-size:14px;font-weight:500;width:100%;}
 .btn:hover{background:var(--border-soft);}
@@ -115,8 +116,11 @@ input,select,textarea{font-family:inherit;font-size:15px;}
 .co-card{background:#fff;border:0.5px solid var(--border);border-radius:12px;margin-bottom:10px;overflow:hidden;}
 .co-head{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;cursor:pointer;}
 .co-head .name{font-family:'Source Serif 4',serif;font-size:16px;font-weight:600;}
+.co-head .chev{color:var(--ink3);font-size:13px;transition:transform 0.15s;margin-left:10px;}
+.co-card.open .co-head .chev{transform:rotate(90deg);}
 .co-detail{padding:0 16px 16px;border-top:0.5px solid var(--border-soft);}
 .compare-row{display:flex;gap:8px;margin:14px 0 6px;}
+.compare-row .btn{width:auto;flex:1;}
 .compare-row select{flex:1;padding:8px;border:0.5px solid var(--border);border-radius:8px;font-size:13px;}
 .group-label{font-size:12px;text-transform:uppercase;letter-spacing:0.03em;color:var(--ink3);margin:14px 0 4px;}
 .textblock{background:var(--bg);border-radius:8px;padding:10px 12px;font-size:13.5px;color:var(--ink);margin-top:6px;white-space:pre-wrap;}
@@ -263,7 +267,7 @@ function fmtValue(field, v){
 }
 function deltaHtml(curr, prev){
   if(curr===null||curr===undefined||curr===''||prev===null||prev===undefined||prev===''){
-    return '<span class="delta muted">нет данных</span>';
+    return '<span class="delta muted">не с чем сравнить</span>';
   }
   const c = Number(curr), p = Number(prev);
   if(isNaN(c)||isNaN(p)) return '<span class="delta muted">—</span>';
@@ -368,7 +372,7 @@ const S = {
   config:null, view:'landing', role:null, companyId:null, loginError:'',
   companyMonth:null, companyReport:null, companyMonthsDone:[],
   adminTab:'overview', adminMonth:null, expandedCoId:null,
-  compareA:null, compareB:null, chartMetric:null, coDetailCache:{},
+  compareA:null, compareB:null, compareEnabled:false, chartMetric:null, coDetailCache:{},
   revealedPasswords:{}, editingCoId:null, confirmingDeleteId:null,
 };
 
@@ -469,8 +473,15 @@ async function onAppClick(e){
     else{
       S.expandedCoId = id;
       S.compareA = S.adminMonth; S.compareB = prevMonthStr(S.adminMonth);
-      await loadCoDetail(id, S.compareA); await loadCoDetail(id, S.compareB);
+      S.compareEnabled = false;
+      await loadCoDetail(id, S.compareA);
     }
+    render();
+  }
+
+  if(act==='enable-compare'){
+    S.compareEnabled = true;
+    await loadCoDetail(S.expandedCoId, S.compareB);
     render();
   }
 
@@ -782,10 +793,13 @@ function renderOverviewTab(){
   const cards = companies.map(co=>{
     const expanded = S.expandedCoId===co.id;
     return `
-    <div class="co-card">
+    <div class="co-card${expanded?' open':''}">
       <div class="co-head" data-act="toggle-co" data-id="${co.id}">
         <div class="name">${escapeHtml(co.name)}</div>
-        <span class="badge pending" id="badge_${co.id}">…</span>
+        <div style="display:flex;align-items:center;">
+          <span class="badge pending" id="badge_${co.id}">…</span>
+          <span class="chev">▸</span>
+        </div>
       </div>
       ${expanded?`<div class="co-detail" id="detail_${co.id}"></div>`:''}
     </div>`;
@@ -876,7 +890,7 @@ async function renderCoDetail(coId){
   const monthOptsA = months.map(mo=>`<option value="${mo}" ${mo===S.compareA?'selected':''}>${monthLabel(mo)}</option>`).join('');
   const monthOptsB = months.map(mo=>`<option value="${mo}" ${mo===S.compareB?'selected':''}>${monthLabel(mo)}</option>`).join('');
   const repA = await loadCoDetail(coId, S.compareA);
-  const repB = await loadCoDetail(coId, S.compareB);
+  const repB = S.compareEnabled ? await loadCoDetail(coId, S.compareB) : null;
 
   const groupsHtml = FIELD_GROUPS.map(g=>`
     <div class="group-label">${g.title}</div>
@@ -887,7 +901,7 @@ async function renderCoDetail(coId){
         <div class="lbl">${f.label}</div>
         <div class="vals">
           <span class="val num">${fmtValue(f, va)}</span>
-          ${deltaHtml(va, vb)}
+          ${S.compareEnabled ? deltaHtml(va, vb) : ''}
         </div>
       </div>`;
     }).join('')}
@@ -901,7 +915,9 @@ async function renderCoDetail(coId){
   el.innerHTML = `
     <div class="compare-row">
       <select class="compare-select" data-which="a">${monthOptsA}</select>
-      <select class="compare-select" data-which="b">${monthOptsB}</select>
+      ${S.compareEnabled
+        ? `<select class="compare-select" data-which="b">${monthOptsB}</select>`
+        : `<button class="btn" data-act="enable-compare" data-id="${coId}">Сравнить с другим месяцем</button>`}
     </div>
     ${!repA?`<div class="empty-note">Нет отчёта за ${monthLabel(S.compareA)}.</div>`:groupsHtml+textHtml}
     ${repA ? `
@@ -910,6 +926,7 @@ async function renderCoDetail(coId){
     <div class="ai-analysis-box" id="ai-analysis-${coId}"></div>
     ` : ''}
     <div class="group-label">Динамика</div>
+    <p class="link-hint" style="margin-top:0;">Показывает график одного выбранного показателя по всем сданным месяцам — чтобы видеть тренд, а не только два месяца рядом.</p>
     <select id="chart-metric-select" class="small-select">
       <option value="">Выберите показатель…</option>
       ${FIELD_GROUPS.flatMap(g=>g.fields).map(f=>`<option value="${f.id}" ${S.chartMetric===f.id?'selected':''}>${f.label}</option>`).join('')}
@@ -951,7 +968,14 @@ function linkify(s){
   const escaped = escapeHtml(s);
   return escaped.replace(/(https?:\/\/[^\s<]+|www\.[^\s<]+)/gi, (match)=>{
     const href = match.startsWith('http') ? match : 'https://'+match;
-    return `<a href="${href}" target="_blank" rel="noopener">${match}</a>`;
+    let label = '📎 Открыть вложение';
+    try{
+      const u = new URL(href);
+      const last = decodeURIComponent(u.pathname.split('/').filter(Boolean).pop() || '');
+      const cleanName = last.replace(/^\d+-/, '');
+      if(cleanName) label = '📎 ' + cleanName;
+    }catch(e){}
+    return `<a href="${href}" target="_blank" rel="noopener">${label}</a>`;
   });
 }
 
