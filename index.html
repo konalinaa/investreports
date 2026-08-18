@@ -930,7 +930,7 @@ async function renderCoDetail(coId){
     <div class="ai-analysis-box" id="ai-analysis-${coId}"></div>
     ` : ''}
     <div class="group-label">Динамика</div>
-    <p class="link-hint" style="margin-top:0;">Показывает график одного выбранного показателя по всем сданным месяцам — чтобы видеть тренд, а не только два месяца рядом.</p>
+    <p class="link-hint" style="margin-top:0;">Показывает график одного выбранного показателя по всем сданным месяцам, чтобы видеть тренд.</p>
     <select id="chart-metric-select" class="small-select">
       <option value="">Выберите показатель…</option>
       ${FIELD_GROUPS.flatMap(g=>g.fields).map(f=>`<option value="${f.id}" ${S.chartMetric===f.id?'selected':''}>${f.label}</option>`).join('')}
