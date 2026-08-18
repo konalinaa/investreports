@@ -134,6 +134,10 @@ select{appearance:none;-webkit-appearance:none;background-image:url("data:image/
 .textblock{background:var(--bg);border-radius:8px;padding:10px 12px;font-size:13.5px;color:var(--ink);margin-top:6px;white-space:pre-wrap;}
 .textblock .k{font-size:11px;color:var(--ink3);text-transform:uppercase;letter-spacing:0.03em;display:block;margin-bottom:3px;}
 .textblock a{color:var(--accent);}
+.ai-btn-row{display:flex;gap:8px;flex-wrap:wrap;}
+.btn-ai{flex:1;min-width:110px;background:#fff;border:0.5px solid var(--accent);color:#6B4A17;border-radius:8px;padding:9px 8px;font-size:12.5px;font-weight:500;}
+.btn-ai:hover{background:var(--accent);color:#fff;}
+.btn-ai:disabled{opacity:0.5;}
 .ai-analysis-box{background:var(--accent-soft);border-radius:10px;padding:12px 14px;margin-top:10px;font-size:13.5px;color:var(--ink);line-height:1.55;white-space:pre-wrap;}
 .ai-analysis-box:empty{display:none;}
 .ai-analysis-box.loading{color:var(--ink3);font-style:italic;}
@@ -373,7 +377,7 @@ async function uploadToStorage(file, pathPrefix){
   if(!res.ok){ throw new Error('Upload failed: ' + res.status + ' ' + await res.text()); }
   return `${SUPABASE_URL}/storage/v1/object/public/report-files/${path}`;
 }
-async function analyzeReport(companyName, current, previous){
+async function analyzeReport(companyName, history){
   const res = await fetch(`${SUPABASE_URL}/functions/v1/invest-report`, {
     method: 'POST',
     headers: {
@@ -381,12 +385,23 @@ async function analyzeReport(companyName, current, previous){
       'Authorization': 'Bearer ' + SUPABASE_KEY,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ companyName, current, previous })
+    body: JSON.stringify({ companyName, history })
   });
   if(!res.ok){ throw new Error('Analysis failed: ' + res.status + ' ' + await res.text()); }
   const data = await res.json();
   if(data.error) throw new Error(data.error);
   return data.analysis || 'Не удалось получить анализ';
+}
+function renderAIAnalysisSection(coId){
+  return `
+    <div class="group-label">ИИ-анализ</div>
+    <div class="ai-btn-row">
+      <button class="btn-ai" data-act="run-ai-analysis" data-mode="single" data-id="${coId}">📊 Этот месяц</button>
+      <button class="btn-ai" data-act="run-ai-analysis" data-mode="compare" data-id="${coId}">🔀 С прошлым</button>
+      <button class="btn-ai" data-act="run-ai-analysis" data-mode="trend" data-id="${coId}">📈 Вся история</button>
+    </div>
+    <div class="ai-analysis-box" id="ai-analysis-${coId}"></div>
+  `;
 }
 
 /* ---------- state ---------- */
@@ -443,19 +458,38 @@ async function onAppClick(e){
 
   if(act==='run-ai-analysis'){
     const coId = t.dataset.id;
+    const mode = t.dataset.mode;
     const box = document.getElementById('ai-analysis-'+coId);
     const co = S.config.companies.find(c=>c.id===coId);
-    const repA = await loadCoDetail(coId, S.compareA);
-    const repB = await loadCoDetail(coId, S.compareB);
-    t.disabled = true;
+    const btnRow = t.closest('.ai-btn-row');
+    const currentRef = (S.role === 'admin') ? S.compareA : S.companyMonth;
+    if(btnRow) btnRow.querySelectorAll('button').forEach(b=>b.disabled=true);
     if(box){ box.textContent = 'Анализирую…'; box.className = 'ai-analysis-box loading'; }
     try{
-      const text = await analyzeReport(co.name, repA, repB);
+      let history = [];
+      if(mode === 'single'){
+        const rep = await loadCoDetail(coId, currentRef);
+        if(rep) history = [{month: currentRef, data: rep}];
+      } else if(mode === 'compare'){
+        const prevRef = prevMonthStr(currentRef);
+        const repA = await loadCoDetail(coId, currentRef);
+        const repB = await loadCoDetail(coId, prevRef);
+        if(repB) history.push({month: prevRef, data: repB});
+        if(repA) history.push({month: currentRef, data: repA});
+      } else if(mode === 'trend'){
+        const months = (await listCompanyMonths(coId)).slice().sort();
+        for(const m of months){
+          const rep = await loadCoDetail(coId, m);
+          if(rep) history.push({month: m, data: rep});
+        }
+      }
+      if(history.length === 0){ throw new Error('Нет данных для анализа за этот период'); }
+      const text = await analyzeReport(co.name, history);
       if(box){ box.textContent = text; box.className = 'ai-analysis-box'; }
     }catch(err){
       if(box){ box.textContent = 'Ошибка: ' + (err.message || err); box.className = 'ai-analysis-box err'; }
     }
-    t.disabled = false;
+    if(btnRow) btnRow.querySelectorAll('button').forEach(b=>b.disabled=false);
   }
 
   if(act==='toggle-login-pass'){
@@ -778,6 +812,7 @@ function renderCompanyApp(){
           ${renderTextBlocks(rep)}
         </div></div>
       </div>
+      ${renderAIAnalysisSection(S.companyId)}
       ` : ''}
 
       <div class="section-title" style="margin-top:22px;">Редактировать — ${monthLabel(S.companyMonth)}</div>
@@ -975,11 +1010,7 @@ async function renderCoDetail(coId){
         : `<button class="btn-compare-toggle" data-act="enable-compare" data-id="${coId}">🔀 Сравнить с другим месяцем</button>`}
     </div>
     ${!repA?`<div class="empty-note">Нет отчёта за ${monthLabel(S.compareA)}.</div>`:renderHeroCards(repA,repB,S.compareEnabled)+renderMetricsLedger(repA,repB,S.compareEnabled)+renderTextBlocks(repA)}
-    ${repA ? `
-    <div class="group-label">ИИ-анализ</div>
-    <button class="btn" data-act="run-ai-analysis" data-id="${coId}">🤖 Получить анализ</button>
-    <div class="ai-analysis-box" id="ai-analysis-${coId}"></div>
-    ` : ''}
+    ${repA ? renderAIAnalysisSection(coId) : ''}
     <div class="group-label">Динамика</div>
     <p class="link-hint" style="margin-top:0;">Показывает график одного выбранного показателя по всем сданным месяцам, чтобы видеть тренд.</p>
     <select id="chart-metric-select" class="small-select">
