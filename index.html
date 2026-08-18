@@ -137,7 +137,8 @@ select{appearance:none;-webkit-appearance:none;background-image:url("data:image/
 .tabbar button.active{background:var(--ink);color:#fff;}
 
 /* summary metric grid */
-.metric-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px;}
+.metric-grid{display:flex;gap:10px;margin-bottom:18px;}
+.metric-grid .metric-card{flex:0 0 auto;min-width:160px;}
 .metric-card{background:#fff;border:0.5px solid var(--border);border-radius:12px;padding:14px;}
 .metric-card .l{font-size:12px;color:var(--ink2);margin-bottom:4px;}
 .metric-card .v{font-family:'Source Serif 4',serif;font-size:22px;font-weight:600;}
@@ -859,8 +860,8 @@ function renderSettingsTab(){
 
 async function finishOverviewRender(){
   const companies = S.config.companies;
-  const m = S.adminMonth, pm = prevMonthStr(m);
-  let submitted = 0, totalRevenue = 0, revCount=0, revPrevSum=0, revPrevCount=0;
+  const m = S.adminMonth;
+  let submitted = 0;
   for(const co of companies){
     const rep = await loadCoDetail(co.id, m);
     const badge = document.getElementById('badge_'+co.id);
@@ -868,16 +869,11 @@ async function finishOverviewRender(){
       if(rep){ badge.textContent='Сдано'; badge.className='badge done'; submitted++; }
       else{ badge.textContent='Не сдано'; badge.className='badge pending'; }
     }
-    if(rep && rep.revenue_actual!=null){ totalRevenue += Number(rep.revenue_actual)||0; revCount++; }
-    const prep = await loadCoDetail(co.id, pm);
-    if(prep && prep.revenue_actual!=null){ revPrevSum += Number(prep.revenue_actual)||0; revPrevCount++; }
   }
   const grid = document.getElementById('summaryGrid');
   if(grid){
-    const deltaSum = revPrevCount>0 ? deltaHtml(totalRevenue, revPrevSum) : '';
     grid.innerHTML = `
       <div class="metric-card"><div class="l">Сдали отчёт</div><div class="v">${submitted}/${companies.length}</div></div>
-      <div class="metric-card"><div class="l">Суммарная выручка</div><div class="v">${fmtNum(totalRevenue,0)} ₽</div><div style="margin-top:4px;">${deltaSum}</div></div>
     `;
   }
   if(S.expandedCoId){ await renderCoDetail(S.expandedCoId); }
