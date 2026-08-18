@@ -122,6 +122,10 @@ input,select,textarea{font-family:inherit;font-size:15px;}
 .textblock{background:var(--bg);border-radius:8px;padding:10px 12px;font-size:13.5px;color:var(--ink);margin-top:6px;white-space:pre-wrap;}
 .textblock .k{font-size:11px;color:var(--ink3);text-transform:uppercase;letter-spacing:0.03em;display:block;margin-bottom:3px;}
 .textblock a{color:var(--accent);}
+.ai-analysis-box{background:var(--accent-soft);border-radius:10px;padding:12px 14px;margin-top:10px;font-size:13.5px;color:var(--ink);line-height:1.55;white-space:pre-wrap;}
+.ai-analysis-box:empty{display:none;}
+.ai-analysis-box.loading{color:var(--ink3);font-style:italic;}
+.ai-analysis-box.err{background:var(--negative-soft);color:var(--negative);}
 
 /* tabs */
 .tabbar{display:flex;gap:4px;background:#fff;border:0.5px solid var(--border);border-radius:12px;padding:4px;margin-bottom:16px;}
@@ -343,6 +347,21 @@ async function uploadToStorage(file, pathPrefix){
   if(!res.ok){ throw new Error('Upload failed: ' + res.status + ' ' + await res.text()); }
   return `${SUPABASE_URL}/storage/v1/object/public/report-files/${path}`;
 }
+async function analyzeReport(companyName, current, previous){
+  const res = await fetch(`${SUPABASE_URL}/functions/v1/invest-report`, {
+    method: 'POST',
+    headers: {
+      'apikey': SUPABASE_KEY,
+      'Authorization': 'Bearer ' + SUPABASE_KEY,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ companyName, current, previous })
+  });
+  if(!res.ok){ throw new Error('Analysis failed: ' + res.status + ' ' + await res.text()); }
+  const data = await res.json();
+  if(data.error) throw new Error(data.error);
+  return data.analysis || 'Не удалось получить анализ';
+}
 
 /* ---------- state ---------- */
 const S = {
@@ -394,6 +413,23 @@ async function onAppClick(e){
 
   if(act==='toggle-acc'){
     t.closest('.acc').classList.toggle('open');
+  }
+
+  if(act==='run-ai-analysis'){
+    const coId = t.dataset.id;
+    const box = document.getElementById('ai-analysis-'+coId);
+    const co = S.config.companies.find(c=>c.id===coId);
+    const repA = await loadCoDetail(coId, S.compareA);
+    const repB = await loadCoDetail(coId, S.compareB);
+    t.disabled = true;
+    if(box){ box.textContent = 'Анализирую…'; box.className = 'ai-analysis-box loading'; }
+    try{
+      const text = await analyzeReport(co.name, repA, repB);
+      if(box){ box.textContent = text; box.className = 'ai-analysis-box'; }
+    }catch(err){
+      if(box){ box.textContent = 'Не удалось получить анализ, попробуйте ещё раз.'; box.className = 'ai-analysis-box err'; }
+    }
+    t.disabled = false;
   }
 
   if(act==='toggle-login-pass'){
@@ -868,6 +904,11 @@ async function renderCoDetail(coId){
       <select class="compare-select" data-which="b">${monthOptsB}</select>
     </div>
     ${!repA?`<div class="empty-note">Нет отчёта за ${monthLabel(S.compareA)}.</div>`:groupsHtml+textHtml}
+    ${repA && repB ? `
+    <div class="group-label">ИИ-анализ</div>
+    <button class="btn" data-act="run-ai-analysis" data-id="${coId}">🤖 Получить анализ</button>
+    <div class="ai-analysis-box" id="ai-analysis-${coId}"></div>
+    ` : ''}
     <div class="group-label">Динамика</div>
     <select id="chart-metric-select" class="small-select">
       <option value="">Выберите показатель…</option>
