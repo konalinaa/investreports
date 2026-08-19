@@ -54,7 +54,8 @@ select{appearance:none;-webkit-appearance:none;background-image:url("data:image/
 .role-btn{background:#fff;border:0.5px solid var(--border);border-radius:12px;padding:18px;text-align:left;}
 .role-btn:hover{border-color:var(--accent);}
 .role-btn .t{font-family:'Source Serif 4',serif;font-size:16px;font-weight:600;margin-bottom:3px;}
-.role-btn .d{font-size:13px;color:var(--ink2);}
+.role-btn .d{font-size:12px;color:var(--ink3);}
+.login-card-landing{background:var(--accent-soft);}
 .error-msg{background:var(--negative-soft);color:var(--negative);font-size:13px;padding:9px 12px;border-radius:var(--radius);margin-bottom:14px;}
 .hint-note{background:var(--accent-soft);color:#6B4A17;font-size:12.5px;padding:9px 12px;border-radius:var(--radius);margin-bottom:12px;}
 .link-hint{background:var(--bg);color:var(--ink2);font-size:12px;padding:8px 10px;border-radius:8px;margin:0 0 12px;}
@@ -679,17 +680,17 @@ function render(){
 function renderLanding(){
   app.innerHTML = `
   <div class="center-screen">
-    <div class="login-card">
+    <div class="login-card login-card-landing">
       <h1>Ежемесячные отчёты</h1>
       <p class="lead">Портфельные компании — сдайте отчёт. Михаил — посмотрите сводку.</p>
       <div class="role-pick">
         <button class="role-btn" data-act="goto-company-login">
           <div class="t">Я — портфельная компания</div>
-          <div class="d">Заполнить отчёт за месяц</div>
+          <div class="d">Заполнить отчёт и посмотреть динамику</div>
         </button>
         <button class="role-btn" data-act="goto-admin-login">
           <div class="t">Я — Михаил / администратор</div>
-          <div class="d">Посмотреть сводку по всем компаниям</div>
+          <div class="d">Сводка по всем компаниям</div>
         </button>
       </div>
     </div>
