@@ -644,6 +644,18 @@ async function onAppClick(e){
   }
 }
 
+app.addEventListener('keydown', (e)=>{
+  if(e.key !== 'Enter') return;
+  if(e.target.id === 'co-password' || e.target.id === 'co-select'){
+    e.preventDefault();
+    document.querySelector('[data-act="company-login-submit"]')?.click();
+  }
+  if(e.target.id === 'admin-password'){
+    e.preventDefault();
+    document.querySelector('[data-act="admin-login-submit"]')?.click();
+  }
+});
+
 app.addEventListener('change', async (e)=>{
   if(e.target.id === 'admin-month-select'){
     S.adminMonth = e.target.value; S.expandedCoId=null; render();
@@ -740,7 +752,7 @@ function renderCompanyLogin(){
       <div class="field">
         <label>Пароль</label>
         <div class="pass-input-wrap">
-          <input type="password" id="co-password" />
+          <input type="password" id="co-password" enterkeyhint="go" />
           <button type="button" class="eye-btn" data-act="toggle-login-pass" data-target="co-password">👁</button>
         </div>
       </div>
@@ -762,7 +774,7 @@ function renderAdminLogin(){
       <div class="field">
         <label>Пароль</label>
         <div class="pass-input-wrap">
-          <input type="password" id="admin-password" />
+          <input type="password" id="admin-password" enterkeyhint="go" />
           <button type="button" class="eye-btn" data-act="toggle-login-pass" data-target="admin-password">👁</button>
         </div>
       </div>
