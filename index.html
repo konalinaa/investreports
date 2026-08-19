@@ -191,7 +191,9 @@ select{appearance:none;-webkit-appearance:none;background-image:url("data:image/
 .months-list button.active{background:var(--ink);color:#fff;border-color:var(--ink);}
 .months-list button .dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--positive);margin-right:5px;}
 
-.chart-wrap{background:#fff;border:0.5px solid var(--border);border-radius:12px;padding:14px;margin-top:10px;}
+.chart-wrap{background:#fff;border:0.5px solid var(--border);border-radius:12px;padding:14px;margin-top:10px;position:relative;}
+.chart-close{position:absolute;top:10px;right:10px;background:var(--bg);border:0.5px solid var(--border);color:var(--ink2);border-radius:50%;width:26px;height:26px;font-size:13px;line-height:1;z-index:2;}
+.chart-close:hover{background:var(--negative-soft);color:var(--negative);}
 .small-select{padding:7px 9px;border:0.5px solid var(--border);border-radius:8px;font-size:13px;width:100%;margin-bottom:10px;}
 .empty-note{color:var(--ink3);font-size:13px;padding:20px 0;text-align:center;}
 </style>
@@ -467,6 +469,14 @@ async function onAppClick(e){
     S.editFormOpen = !S.editFormOpen;
     const sec = document.getElementById('editFormSection');
     if(sec) sec.classList.toggle('hidden');
+  }
+
+  if(act==='close-chart'){
+    S.chartMetric = '';
+    const wrap = document.getElementById('chartWrap');
+    if(wrap) wrap.classList.add('hidden');
+    const sel = document.getElementById('chart-metric-select');
+    if(sel) sel.value = '';
   }
 
   if(act==='run-ai-analysis'){
@@ -1033,7 +1043,10 @@ async function renderCoDetail(coId){
       <option value="">Выберите показатель…</option>
       ${FIELD_GROUPS.flatMap(g=>g.fields).map(f=>`<option value="${f.id}" ${S.chartMetric===f.id?'selected':''}>${f.label}</option>`).join('')}
     </select>
-    <div class="chart-wrap ${S.chartMetric?'':'hidden'}" id="chartWrap"><canvas id="trendChart" height="180"></canvas></div>
+    <div class="chart-wrap ${S.chartMetric?'':'hidden'}" id="chartWrap">
+      <button class="chart-close" data-act="close-chart" title="Свернуть">✕</button>
+      <canvas id="trendChart" height="180"></canvas>
+    </div>
   `;
   if(S.chartMetric) await renderChart();
 }
