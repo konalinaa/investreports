@@ -381,7 +381,9 @@ async function uploadToStorage(file, pathPrefix){
     body: file
   });
   if(!res.ok){ throw new Error('Upload failed: ' + res.status + ' ' + await res.text()); }
-  return `${SUPABASE_URL}/storage/v1/object/public/report-files/${path}`;
+  const signResult = await adminApi({ action:'sign-file-url', path, ...currentAuthPayload() });
+  if(!signResult.success){ throw new Error('Не удалось получить защищённую ссылку'); }
+  return signResult.url;
 }
 async function analyzeReport(companyName, history){
   const res = await fetch(`${SUPABASE_URL}/functions/v1/invest-report`, {
