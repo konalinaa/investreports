@@ -352,20 +352,21 @@ async function loadPublicCompanies(){
   const companies = await sb('companies_public?select=*');
   return companies || [];
 }
+function currentAuthPayload(){
+  if(S.role === 'admin') return { adminPassword: S.adminPasswordValue };
+  if(S.role === 'company') return { companyPassword: S.companyPasswordValue };
+  return {};
+}
 async function loadReport(companyId, month){
-  const rows = await sb(`reports?select=data&company_id=eq.${encodeURIComponent(companyId)}&month=eq.${encodeURIComponent(month)}`);
-  return (rows && rows[0]) ? rows[0].data : null;
+  const result = await adminApi({ action:'load-report', companyId, month, ...currentAuthPayload() });
+  return result.success ? result.data : null;
 }
 async function saveReportData(companyId, month, data){
-  await sb(`reports?on_conflict=company_id,month`, {
-    method:'POST',
-    headers: { 'Prefer': 'resolution=merge-duplicates' },
-    body: JSON.stringify({ company_id: companyId, month: month, data: data, updated_at: new Date().toISOString() })
-  });
+  await adminApi({ action:'save-report', companyId, month, data, ...currentAuthPayload() });
 }
 async function listCompanyMonths(companyId){
-  const rows = await sb(`reports?select=month&company_id=eq.${encodeURIComponent(companyId)}&order=month.desc`);
-  return (rows||[]).map(r=>r.month);
+  const result = await adminApi({ action:'list-months', companyId, ...currentAuthPayload() });
+  return result.success ? result.months : [];
 }
 async function uploadToStorage(file, pathPrefix){
   const safeName = file.name.replace(/[^a-zA-Z0-9.\-_]/g, '_');
@@ -415,7 +416,7 @@ const S = {
   companyMonth:null, companyReport:null, companyPrevReport:null, companyMonthsDone:[], editFormOpen:true,
   adminTab:'overview', adminMonth:null, expandedCoId:null,
   compareA:null, compareB:null, compareEnabled:false, chartMetric:null, coDetailCache:{},
-  revealedPasswords:{}, editingCoId:null, confirmingDeleteId:null, adminPasswordValue:null,
+  revealedPasswords:{}, editingCoId:null, confirmingDeleteId:null, adminPasswordValue:null, companyPasswordValue:null,
 };
 
 function toast(msg){
@@ -443,7 +444,7 @@ async function onAppClick(e){
     if(!sel){ S.loginError='Выберите компанию.'; render(); return; }
     const result = await adminApi({ action:'verify-company-login', companyId: sel, password: pass });
     if(!result.success){ S.loginError='Неверный пароль.'; render(); return; }
-    S.role='company'; S.companyId=sel; S.companyMonth=currentMonthStr();
+    S.role='company'; S.companyId=sel; S.companyPasswordValue=pass; S.companyMonth=currentMonthStr();
     await enterCompanyMonth(S.companyMonth);
     S.companyMonthsDone = await listCompanyMonths(sel);
     S.view='company-app'; render();
