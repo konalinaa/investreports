@@ -143,6 +143,12 @@ select{appearance:none;-webkit-appearance:none;background-image:url("data:image/
 .textblock a{color:var(--accent);}
 .file-link{color:var(--accent);font-size:13px;text-decoration:none;}
 .file-link:hover{text-decoration:underline;}
+.attach-list{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;}
+.attach-chip{display:inline-flex;align-items:center;gap:6px;background:var(--accent-soft);border-radius:20px;padding:5px 6px 5px 12px;font-size:12.5px;}
+.attach-chip a{color:#6B4A17;text-decoration:none;}
+.attach-chip a:hover{text-decoration:underline;}
+.chip-remove{background:transparent;border:none;color:var(--ink3);font-size:14px;width:18px;height:18px;border-radius:50%;line-height:1;padding:0;}
+.chip-remove:hover{background:var(--negative-soft);color:var(--negative);}
 .ai-btn-row{display:flex;gap:8px;flex-wrap:wrap;}
 .btn-ai{flex:1;min-width:110px;background:#fff;border:0.5px solid var(--accent);color:#6B4A17;border-radius:8px;padding:9px 8px;font-size:12.5px;font-weight:500;}
 .btn-ai:hover{background:var(--accent);color:#fff;}
@@ -420,7 +426,7 @@ const S = {
   companyMonth:null, companyReport:null, companyPrevReport:null, companyMonthsDone:[], editFormOpen:true,
   adminTab:'overview', adminMonth:null, expandedCoId:null,
   compareA:null, compareB:null, compareEnabled:false, chartMetric:null, coDetailCache:{},
-  revealedPasswords:{}, editingCoId:null, confirmingDeleteId:null, adminPasswordValue:null, companyPasswordValue:null, myFilesLoaded:false,
+  revealedPasswords:{}, editingCoId:null, confirmingDeleteId:null, adminPasswordValue:null, companyPasswordValue:null, myFilesLoaded:false, pendingAttachments:{},
 };
 
 function toast(msg){
@@ -570,12 +576,25 @@ async function onAppClick(e){
       const v = inp.value.trim();
       data[inp.dataset.field] = v==='' ? null : (inp.tagName==='TEXTAREA' ? v : Number(v));
     });
+    TEXT_FIELDS.forEach(f=>{
+      const atts = S.pendingAttachments[f.id];
+      if(atts && atts.length) data[f.id+'_files'] = atts;
+    });
     data.updatedAt = Date.now();
     await saveReportData(S.companyId, S.companyMonth, data);
     S.companyReport = data;
     S.companyMonthsDone = await listCompanyMonths(S.companyId);
     toast('Отчёт сохранён');
     render();
+  }
+
+  if(act==='remove-attachment'){
+    const fieldId = t.dataset.field;
+    const url = t.dataset.url;
+    if(S.pendingAttachments[fieldId]){
+      S.pendingAttachments[fieldId] = S.pendingAttachments[fieldId].filter(a=>a.url!==url);
+    }
+    t.closest('.attach-chip').remove();
   }
 
   if(act==='admin-tab'){ S.adminTab = t.dataset.tab; render(); }
@@ -715,8 +734,16 @@ app.addEventListener('change', async (e)=>{
     if(statusEl){ statusEl.textContent = 'Загрузка…'; statusEl.className='attach-status'; }
     try{
       const url = await uploadToStorage(file, `${S.companyId}/${S.companyMonth}`);
-      const ta = document.getElementById('f_'+fieldId);
-      ta.value = (ta.value ? ta.value + '\n' : '') + url;
+      if(!S.pendingAttachments[fieldId]) S.pendingAttachments[fieldId] = [];
+      S.pendingAttachments[fieldId].push({url, name: file.name});
+      const listEl = document.getElementById('attachlist_'+fieldId);
+      if(listEl){
+        const chip = document.createElement('span');
+        chip.className = 'attach-chip';
+        chip.dataset.url = url;
+        chip.innerHTML = `<a href="${escapeAttr(url)}" target="_blank" rel="noopener">📎 ${escapeHtml(file.name)}</a> <button type="button" class="chip-remove" data-act="remove-attachment" data-field="${fieldId}" data-url="${escapeAttr(url)}">×</button>`;
+        listEl.appendChild(chip);
+      }
       if(statusEl){ statusEl.textContent = '✓ Прикреплено: ' + file.name; statusEl.className='attach-status ok'; }
     }catch(err){
       if(statusEl){ statusEl.textContent = 'Не удалось загрузить, попробуйте ещё раз'; statusEl.className='attach-status err'; }
@@ -730,6 +757,10 @@ async function enterCompanyMonth(m){
   S.companyReport = await loadReport(S.companyId, m) || {};
   S.companyPrevReport = await loadReport(S.companyId, prevMonthStr(m));
   S.editFormOpen = Object.keys(S.companyReport).length === 0;
+  S.pendingAttachments = {};
+  TEXT_FIELDS.forEach(f=>{
+    if(Array.isArray(S.companyReport[f.id+'_files'])) S.pendingAttachments[f.id] = S.companyReport[f.id+'_files'];
+  });
 }
 async function loadCoDetail(companyId, month){
   const key = companyId+':'+month;
@@ -850,17 +881,23 @@ function renderCompanyApp(){
     <div class="acc">
       <div class="acc-head" data-act="toggle-acc"><h3>Комментарии</h3><span class="chev">▸</span></div>
       <div class="acc-body"><div class="acc-body-inner">
-        <p class="link-hint">Можно прикрепить фото, видео или файл прямо кнопкой ниже — или просто вставить ссылку в текст.</p>
-        ${TEXT_FIELDS.map(f=>`
+        <p class="link-hint">Можно прикрепить фото, видео или файл кнопкой ниже — появится отдельным значком, не в тексте.</p>
+        ${TEXT_FIELDS.map(f=>{
+          const atts = S.pendingAttachments[f.id] || [];
+          return `
           <div class="field" style="margin-top:10px;">
             <label>${f.label}</label>
             <textarea data-field="${f.id}" id="f_${f.id}">${rep[f.id]?escapeHtml(rep[f.id]):''}</textarea>
+            <div class="attach-list" id="attachlist_${f.id}">
+              ${atts.map(a=>`<span class="attach-chip" data-url="${escapeAttr(a.url)}"><a href="${escapeAttr(a.url)}" target="_blank" rel="noopener">📎 ${escapeHtml(a.name)}</a> <button type="button" class="chip-remove" data-act="remove-attachment" data-field="${f.id}" data-url="${escapeAttr(a.url)}">×</button></span>`).join('')}
+            </div>
             <div class="attach-row">
               <label class="attach-btn" for="file_${f.id}">📎 Прикрепить фото/видео/файл</label>
               <input type="file" id="file_${f.id}" data-attach-for="${f.id}" class="attach-input" accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx" />
               <span class="attach-status" id="attach_status_${f.id}"></span>
             </div>
-          </div>`).join('')}
+          </div>`;
+        }).join('')}
       </div></div>
     </div>`;
 
@@ -874,7 +911,7 @@ function renderCompanyApp(){
       <div class="section-title">Месяц отчёта</div>
       <div class="months-list">${monthsChips}</div>
 
-      <div class="acc" id="myFilesAcc">
+      <div class="acc" id="myFilesAcc" style="margin-top:20px;">
         <div class="acc-head" data-act="toggle-myfiles-acc"><h3>📎 Все ваши файлы</h3><span class="chev">▸</span></div>
         <div class="acc-body"><div class="acc-body-inner" id="myFilesContent"><p class="empty-note">Нажмите, чтобы посмотреть</p></div></div>
       </div>
@@ -1096,8 +1133,16 @@ function renderMetricsLedger(repCurrent, repPrev, showDelta){
 function renderTextBlocks(rep){
   if(!rep) return '';
   return TEXT_FIELDS.map(f=>{
-    if(!rep[f.id]) return '';
-    return `<div class="textblock"><span class="k">${f.label}</span>${linkify(rep[f.id])}</div>`;
+    const hasText = rep[f.id];
+    const files = rep[f.id+'_files'];
+    if(!hasText && !(files && files.length)) return '';
+    let html = `<div class="textblock"><span class="k">${f.label}</span>`;
+    if(hasText) html += linkify(rep[f.id]);
+    if(files && files.length){
+      html += `<div class="attach-list">` + files.map(a=>`<span class="attach-chip"><a href="${escapeAttr(a.url)}" target="_blank" rel="noopener">📎 ${escapeHtml(a.name)}</a></span>`).join('') + `</div>`;
+    }
+    html += `</div>`;
+    return html;
   }).join('');
 }
 
