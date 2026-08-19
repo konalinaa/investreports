@@ -1065,7 +1065,23 @@ async function renderChart(){
   const wrap = document.getElementById('chartWrap');
   if(wrap) wrap.classList.remove('hidden');
   const ctx = document.getElementById('trendChart');
+  const hasData = vals.some(v => v !== null);
+  let emptyEl = document.getElementById('chartEmptyNote');
+  if(!hasData){
+    if(chartInstance){ chartInstance.destroy(); chartInstance = null; }
+    if(ctx) ctx.style.display = 'none';
+    if(!emptyEl && wrap){
+      emptyEl = document.createElement('div');
+      emptyEl.id = 'chartEmptyNote';
+      emptyEl.className = 'empty-note';
+      wrap.appendChild(emptyEl);
+    }
+    if(emptyEl) emptyEl.textContent = `Нет данных по показателю «${field.label}» ни за один месяц.`;
+    return;
+  }
+  if(emptyEl) emptyEl.remove();
   if(!ctx) return;
+  ctx.style.display = '';
   if(chartInstance) chartInstance.destroy();
   chartInstance = new Chart(ctx, {
     type:'line',
