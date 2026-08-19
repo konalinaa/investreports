@@ -389,7 +389,7 @@ async function uploadToStorage(file, pathPrefix){
     body: file
   });
   if(!res.ok){ throw new Error('Upload failed: ' + res.status + ' ' + await res.text()); }
-  const signResult = await adminApi({ action:'sign-file-url', path, ...currentAuthPayload() });
+  const signResult = await adminApi({ action:'sign-file-url', path, companyId: S.companyId, ...currentAuthPayload() });
   if(!signResult.success){ throw new Error('Не удалось получить защищённую ссылку'); }
   return signResult.url;
 }
