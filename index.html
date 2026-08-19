@@ -445,7 +445,10 @@ async function onAppClick(e){
     const pass = document.getElementById('co-password').value;
     if(!sel){ S.loginError='Выберите компанию.'; render(); return; }
     const result = await adminApi({ action:'verify-company-login', companyId: sel, password: pass });
-    if(!result.success){ S.loginError='Неверный пароль.'; render(); return; }
+    if(!result.success){
+      S.loginError = result.locked ? `Слишком много неверных попыток. Попробуйте через ${result.minutesLeft} мин.` : 'Неверный пароль.';
+      render(); return;
+    }
     S.role='company'; S.companyId=sel; S.companyPasswordValue=pass; S.companyMonth=currentMonthStr();
     await enterCompanyMonth(S.companyMonth);
     S.companyMonthsDone = await listCompanyMonths(sel);
@@ -455,7 +458,10 @@ async function onAppClick(e){
   if(act==='admin-login-submit'){
     const pass = document.getElementById('admin-password').value;
     const result = await adminApi({ action:'verify-admin-login', password: pass });
-    if(!result.success){ S.loginError='Неверный пароль.'; render(); return; }
+    if(!result.success){
+      S.loginError = result.locked ? `Слишком много неверных попыток. Попробуйте через ${result.minutesLeft} мин.` : 'Неверный пароль.';
+      render(); return;
+    }
     S.role='admin'; S.adminPasswordValue = pass; S.adminMonth=currentMonthStr();
     const listResult = await adminApi({ action:'list-companies', adminPassword: pass });
     if(listResult.success) S.config.companies = listResult.companies;
